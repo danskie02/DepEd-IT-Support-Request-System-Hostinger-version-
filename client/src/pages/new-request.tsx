@@ -39,7 +39,7 @@ export default function NewRequestPage() {
           <ArrowLeft className="w-4 h-4" />
           Back to Dashboard
         </Link>
-        <h1 className="text-3xl font-display font-bold text-gray-900">Submit New Request</h1>
+        <h1 className="text-3xl font-display font-bold text-gray-900">DepEd Marinduque IT Services - Submit New Request</h1>
         <p className="text-muted-foreground">Provide details about the IT service you require.</p>
       </div>
 
@@ -74,11 +74,36 @@ export default function NewRequestPage() {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="Hardware">Hardware Issue</SelectItem>
-                      <SelectItem value="Software">Software Installation</SelectItem>
-                      <SelectItem value="Network">Internet/Network</SelectItem>
-                      <SelectItem value="Account">Account Access</SelectItem>
-                      <SelectItem value="Other">Other</SelectItem>
+                      <SelectItem value="Hardware">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                          Hardware Issue
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="Software">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                          Software Installation
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="Network">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-purple-500"></span>
+                          Internet/Network
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="Account">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-orange-500"></span>
+                          Account Access
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="Other">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-gray-500"></span>
+                          Other
+                        </div>
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -99,10 +124,30 @@ export default function NewRequestPage() {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="low">Low - Can wait a week</SelectItem>
-                      <SelectItem value="medium">Medium - Needed in few days</SelectItem>
-                      <SelectItem value="high">High - Needed ASAP</SelectItem>
-                      <SelectItem value="urgent">Urgent - Work stoppage</SelectItem>
+                      <SelectItem value="low">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                          Low - Can wait a week
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="medium">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-orange-500"></span>
+                          Medium - Needed in few days
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="high">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                          High - Needed ASAP
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="urgent">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-red-600 animate-pulse"></span>
+                          Urgent - Work stoppage
+                        </div>
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -118,10 +163,10 @@ export default function NewRequestPage() {
               <FormItem>
                 <FormLabel>Detailed Description</FormLabel>
                 <FormControl>
-                  <Textarea 
-                    placeholder="Describe the issue in detail..." 
+                  <Textarea
+                    placeholder="Describe the issue in detail..."
                     className="min-h-[150px] resize-y"
-                    {...field} 
+                    {...field}
                   />
                 </FormControl>
                 <FormMessage />
@@ -130,9 +175,9 @@ export default function NewRequestPage() {
           />
 
           <div className="pt-4 flex gap-4">
-            <Button 
-              type="submit" 
-              size="lg" 
+            <Button
+              type="submit"
+              size="lg"
               className="flex-1 font-bold shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all"
               disabled={isPending}
             >

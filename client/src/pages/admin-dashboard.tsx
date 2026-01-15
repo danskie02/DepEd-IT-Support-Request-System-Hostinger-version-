@@ -5,16 +5,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { StatusBadge, PriorityBadge } from "@/components/status-badge";
-import { format } from "date-fns";
+import { formatLocalDate } from "@/lib/date-utils";
 import { Search, Filter, Eye, CheckCircle, XCircle, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 
 export default function AdminDashboard() {
-  const { data: requests, isLoading } = useRequests();
+  const { data: requests, isLoading } = useRequests(true); // Enable auto-refresh for admin
   const { mutate: updateStatus, isPending: isUpdating } = useUpdateRequestStatus();
-  
+
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedRequest, setSelectedRequest] = useState<any>(null);
@@ -30,24 +30,24 @@ export default function AdminDashboard() {
   }
 
   const filteredRequests = (requests || []).filter(req => {
-    const matchesSearch = 
+    const matchesSearch =
       req.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       req.user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       req.id.toString().includes(searchTerm);
-    
+
     const matchesStatus = statusFilter === "all" || req.status === statusFilter;
-    
+
     return matchesSearch && matchesStatus;
   });
 
   const handleUpdate = () => {
     if (!selectedRequest || !reviewAction) return;
-    
+
     updateStatus(
-      { 
-        id: selectedRequest.id, 
-        status: reviewAction, 
-        adminResponse 
+      {
+        id: selectedRequest.id,
+        status: reviewAction,
+        adminResponse
       },
       {
         onSuccess: () => {
@@ -63,8 +63,14 @@ export default function AdminDashboard() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-6">
         <div>
-          <h1 className="text-3xl font-display font-bold text-gray-900">Admin Dashboard</h1>
-          <p className="text-muted-foreground">Manage and review all incoming service requests</p>
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-display font-bold text-gray-900">DepEd Marinduque IT Services - Admin Dashboard</h1>
+            <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
+              Auto-refresh enabled
+            </span>
+          </div>
+          <p className="text-muted-foreground mt-1">Manage and review all incoming service requests</p>
         </div>
       </div>
 
@@ -73,8 +79,8 @@ export default function AdminDashboard() {
         <CardContent className="p-4 flex flex-col md:flex-row gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input 
-              placeholder="Search by ID, Title, or User..." 
+            <Input
+              placeholder="Search by ID, Title, or User..."
               className="pl-9 bg-white"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -102,14 +108,14 @@ export default function AdminDashboard() {
         <Table>
           <TableHeader className="bg-gray-50">
             <TableRow>
-              <TableHead className="w-[80px]">ID</TableHead>
-              <TableHead>User</TableHead>
-              <TableHead>Title</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead>Priority</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Action</TableHead>
+              <TableHead className="w-[80px] px-6 py-4">ID</TableHead>
+              <TableHead className="px-6 py-4">User</TableHead>
+              <TableHead className="px-6 py-4">Title</TableHead>
+              <TableHead className="px-6 py-4">Category</TableHead>
+              <TableHead className="px-6 py-4">Priority</TableHead>
+              <TableHead className="w-[180px] px-6 py-4">Date & Time</TableHead>
+              <TableHead className="px-6 py-4">Status</TableHead>
+              <TableHead className="text-right px-6 py-4">Action</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -122,27 +128,27 @@ export default function AdminDashboard() {
             ) : (
               filteredRequests.map((req) => (
                 <TableRow key={req.id} className="hover:bg-gray-50/50">
-                  <TableCell className="font-mono text-xs font-medium">#{req.id}</TableCell>
-                  <TableCell>
-                    <div className="flex flex-col">
+                  <TableCell className="font-mono text-xs font-medium px-6 py-4">#{req.id}</TableCell>
+                  <TableCell className="px-6 py-4">
+                    <div className="flex flex-col gap-1">
                       <span className="font-medium text-sm">{req.user.name}</span>
                       <span className="text-xs text-muted-foreground">{req.user.email}</span>
                     </div>
                   </TableCell>
-                  <TableCell className="font-medium">{req.title}</TableCell>
-                  <TableCell>{req.category}</TableCell>
-                  <TableCell>
+                  <TableCell className="font-medium px-6 py-4">{req.title}</TableCell>
+                  <TableCell className="px-6 py-4">{req.category}</TableCell>
+                  <TableCell className="px-6 py-4">
                     <PriorityBadge priority={req.priority} />
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {format(new Date(req.createdAt), "MMM d, yyyy")}
+                  <TableCell className="text-sm text-muted-foreground whitespace-nowrap px-6 py-4">
+                    {formatLocalDate(req.createdAt, "MMM d, yyyy h:mm a")}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="px-6 py-4">
                     <StatusBadge status={req.status as any} />
                   </TableCell>
-                  <TableCell className="text-right">
-                    <Button 
-                      variant="outline" 
+                  <TableCell className="text-right px-6 py-4">
+                    <Button
+                      variant="outline"
                       size="sm"
                       onClick={() => setSelectedRequest(req)}
                     >
@@ -161,7 +167,7 @@ export default function AdminDashboard() {
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold flex items-center gap-3">
-              Request Review 
+              Request Review
               {selectedRequest && <span className="text-sm font-normal text-muted-foreground bg-gray-100 px-2 py-0.5 rounded-md">#{selectedRequest.id}</span>}
             </DialogTitle>
             <DialogDescription>
@@ -179,8 +185,8 @@ export default function AdminDashboard() {
                   <p className="text-xs text-muted-foreground">{selectedRequest.user.email}</p>
                 </div>
                 <div className="space-y-1">
-                  <span className="text-muted-foreground">Date</span>
-                  <p className="font-medium">{format(new Date(selectedRequest.createdAt), "PPP p")}</p>
+                  <span className="text-muted-foreground">Date & Time</span>
+                  <p className="font-medium">{formatLocalDate(selectedRequest.createdAt, "PPP 'at' h:mm a")}</p>
                 </div>
                 <div className="space-y-1">
                   <span className="text-muted-foreground">Category</span>
@@ -200,18 +206,18 @@ export default function AdminDashboard() {
               {/* Action Area */}
               <div className="space-y-4 pt-4 border-t">
                 <h4 className="font-semibold text-sm">Admin Action</h4>
-                
+
                 {selectedRequest.status === "pending" ? (
                   <>
-                    <Textarea 
+                    <Textarea
                       placeholder="Add a note or reason for your decision..."
                       value={adminResponse}
                       onChange={(e) => setAdminResponse(e.target.value)}
                       className="min-h-[100px]"
                     />
                     <div className="flex gap-3">
-                      <Button 
-                        className="flex-1 bg-green-600 hover:bg-green-700" 
+                      <Button
+                        className="flex-1 bg-green-600 hover:bg-green-700"
                         onClick={() => { setReviewAction("approved"); }}
                         disabled={reviewAction === "approved"}
                         variant={reviewAction === "approved" ? "secondary" : "default"}
@@ -219,8 +225,8 @@ export default function AdminDashboard() {
                         <CheckCircle className="w-4 h-4 mr-2" />
                         Approve Request
                       </Button>
-                      <Button 
-                        className="flex-1" 
+                      <Button
+                        className="flex-1"
                         variant={reviewAction === "denied" ? "secondary" : "destructive"}
                         onClick={() => { setReviewAction("denied"); }}
                         disabled={reviewAction === "denied"}

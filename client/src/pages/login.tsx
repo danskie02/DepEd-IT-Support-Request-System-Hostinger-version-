@@ -30,7 +30,18 @@ export default function LoginPage() {
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
       {/* DepEd Branding Header */}
       <div className="mb-8 text-center">
-        <h1 className="text-4xl font-display font-bold text-primary mb-2">DepEd IT Services</h1>
+        <div className="flex items-center justify-center gap-3 mb-2">
+          <img 
+            src="/deped-logo.png" 
+            alt="DepEd Logo" 
+            className="h-12 w-auto object-contain"
+            onError={(e) => {
+              // Fallback if logo is not found
+              e.currentTarget.style.display = 'none';
+            }}
+          />
+          <h1 className="text-4xl font-display font-bold text-primary">DepEd Marinduque IT Services</h1>
+        </div>
         <p className="text-muted-foreground">Department of Education Service Request System</p>
       </div>
 

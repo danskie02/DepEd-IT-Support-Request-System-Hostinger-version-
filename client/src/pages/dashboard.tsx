@@ -3,8 +3,8 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { StatusBadge, PriorityBadge } from "@/components/status-badge";
-import { Plus, FileText, Calendar, AlertCircle } from "lucide-react";
-import { format } from "date-fns";
+import { Plus, FileText, Calendar, AlertCircle, Eye } from "lucide-react";
+import { formatLocalDate } from "@/lib/date-utils";
 
 export default function Dashboard() {
   const { data: requests, isLoading } = useRequests();
@@ -26,7 +26,7 @@ export default function Dashboard() {
     <div className="space-y-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-6">
         <div>
-          <h1 className="text-3xl font-display font-bold text-gray-900">My Requests</h1>
+          <h1 className="text-3xl font-display font-bold text-gray-900">DepEd Marinduque IT Services - My Requests</h1>
           <p className="text-muted-foreground mt-1">Track the status of your IT service tickets</p>
         </div>
         <Link href="/new-request">
@@ -53,21 +53,21 @@ export default function Dashboard() {
       ) : (
         <div className="grid gap-4">
           {myRequests.map((req) => (
-            <Card key={req.id} className="hover:shadow-md transition-shadow duration-200 border-l-4 border-l-primary/10 hover:border-l-primary">
+            <Card key={req.id} className="hover:shadow-md transition-all duration-200 border-l-4 border-l-primary/10 hover:border-l-primary cursor-pointer group" onClick={() => window.location.href = `/request/${req.id}`}>
               <CardContent className="p-6">
                 <div className="flex flex-col md:flex-row gap-4 justify-between md:items-start">
-                  <div className="space-y-1">
+                  <div className="space-y-1 flex-1">
                     <div className="flex items-center gap-3">
                       <span className="text-xs font-mono text-muted-foreground bg-gray-100 px-2 py-0.5 rounded">
                         #{req.id.toString().padStart(4, '0')}
                       </span>
-                      <h3 className="font-bold text-lg text-gray-900">{req.title}</h3>
+                      <h3 className="font-bold text-lg text-gray-900 group-hover:text-primary transition-colors">{req.title}</h3>
                     </div>
                     <p className="text-gray-600 line-clamp-2 text-sm">{req.description}</p>
                     <div className="flex flex-wrap items-center gap-4 pt-2 text-sm text-muted-foreground">
                       <div className="flex items-center gap-1.5">
                         <Calendar className="w-4 h-4" />
-                        {format(new Date(req.createdAt), "PPP")}
+                        {formatLocalDate(req.createdAt, "PPP")}
                       </div>
                       <div className="flex items-center gap-1.5">
                         <AlertCircle className="w-4 h-4" />
@@ -85,9 +85,18 @@ export default function Dashboard() {
                 {req.adminResponse && (
                   <div className="mt-4 p-4 bg-gray-50 rounded-lg text-sm border">
                     <span className="font-bold block text-gray-700 mb-1">Admin Response:</span>
-                    <p className="text-gray-600">{req.adminResponse}</p>
+                    <p className="text-gray-600 line-clamp-2">{req.adminResponse}</p>
                   </div>
                 )}
+
+                <div className="mt-4 pt-4 border-t flex justify-end">
+                  <Link href={`/request/${req.id}`}>
+                    <Button variant="outline" size="sm" className="group-hover:bg-primary group-hover:text-primary-foreground transition-all">
+                      <Eye className="w-4 h-4 mr-2" />
+                      View Details
+                    </Button>
+                  </Link>
+                </div>
               </CardContent>
             </Card>
           ))}

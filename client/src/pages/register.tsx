@@ -11,11 +11,11 @@ import { Loader2 } from "lucide-react";
 
 export default function RegisterPage() {
   const { register, isRegistering } = useAuth();
-  
+
   const form = useForm({
     resolver: zodResolver(insertUserSchema),
-    defaultValues: { 
-      username: "", password: "", name: "", email: "", phone: "", role: "user" as const 
+    defaultValues: {
+      username: "", password: "", name: "", email: "", phone: "", role: "user" as const
     },
   });
 
@@ -26,8 +26,15 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
       <div className="mb-8 text-center">
-        <h1 className="text-3xl font-display font-bold text-primary mb-2">Create Account</h1>
-        <p className="text-muted-foreground">Join the DepEd IT Services Portal</p>
+        <div className="flex items-center justify-center gap-3 mb-2">
+          <img
+            src="/deped-logo.png"
+            alt="DepEd Logo"
+            className="h-10 w-auto object-contain"
+          />
+          <h1 className="text-3xl font-display font-bold text-primary">Create Account</h1>
+        </div>
+        <p className="text-muted-foreground">Join the DepEd Marinduque IT Services Portal</p>
       </div>
 
       <Card className="w-full max-w-lg shadow-xl border-t-4 border-t-secondary">
@@ -105,10 +112,10 @@ export default function RegisterPage() {
                   )}
                 />
               </div>
-              
-              <Button 
-                type="submit" 
-                className="w-full text-lg h-12 font-bold mt-4" 
+
+              <Button
+                type="submit"
+                className="w-full text-lg h-12 font-bold mt-4"
                 disabled={isRegistering}
               >
                 {isRegistering ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : "Create Account"}

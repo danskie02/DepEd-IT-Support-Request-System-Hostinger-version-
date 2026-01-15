@@ -12,7 +12,9 @@ export function useAuth() {
   const { data: user, isLoading: isLoadingUser } = useQuery({
     queryKey: [api.auth.me.path],
     queryFn: async () => {
-      const res = await fetch(api.auth.me.path);
+      const res = await fetch(api.auth.me.path, {
+        credentials: "include", // Include cookies for session
+      });
       if (res.status === 401) return null;
       if (!res.ok) throw new Error("Failed to fetch user");
       return api.auth.me.responses[200].parse(await res.json());
@@ -25,6 +27,7 @@ export function useAuth() {
       const res = await fetch(api.auth.login.path, {
         method: api.auth.login.method,
         headers: { "Content-Type": "application/json" },
+        credentials: "include", // Include cookies for session
         body: JSON.stringify(credentials),
       });
       if (!res.ok) {
@@ -47,6 +50,7 @@ export function useAuth() {
       const res = await fetch(api.auth.register.path, {
         method: api.auth.register.method,
         headers: { "Content-Type": "application/json" },
+        credentials: "include", // Include cookies for session
         body: JSON.stringify(data),
       });
       if (!res.ok) {
@@ -72,19 +76,32 @@ export function useAuth() {
       const res = await fetch(api.auth.verify.path, {
         method: api.auth.verify.method,
         headers: { "Content-Type": "application/json" },
+        credentials: "include", // Important: include cookies for session
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error("Invalid OTP");
-      return api.auth.verify.responses[200].parse(await res.json());
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || "Invalid or expired OTP code");
+      }
+      const userData = await res.json();
+      return api.auth.verify.responses[200].parse(userData);
     },
     onSuccess: (user) => {
+      // Update user data in cache
       queryClient.setQueryData([api.auth.me.path], user);
-      toast({ title: "Welcome back!", description: `Logged in as ${user.name}` });
-      if (user.role === 'admin') {
-        setLocation("/admin/dashboard");
-      } else {
-        setLocation("/dashboard");
-      }
+      // Invalidate to refetch fresh data
+      queryClient.invalidateQueries({ queryKey: [api.auth.me.path] });
+      
+      toast({ title: "Verification Successful!", description: `Welcome, ${user.name}!` });
+      
+      // Redirect after a brief delay to ensure state is updated
+      setTimeout(() => {
+        if (user.role === 'admin') {
+          window.location.href = "/admin/dashboard";
+        } else {
+          window.location.href = "/dashboard";
+        }
+      }, 300);
     },
     onError: (error) => {
       toast({ title: "Verification Failed", description: error.message, variant: "destructive" });

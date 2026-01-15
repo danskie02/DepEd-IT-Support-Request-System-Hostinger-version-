@@ -11,6 +11,7 @@ import RegisterPage from "@/pages/register";
 import VerifyOtpPage from "@/pages/verify-otp";
 import Dashboard from "@/pages/dashboard";
 import NewRequestPage from "@/pages/new-request";
+import RequestStatusPage from "@/pages/request-status";
 import AdminDashboard from "@/pages/admin-dashboard";
 import NotFound from "@/pages/not-found";
 import { Loader2 } from "lucide-react";
@@ -58,6 +59,9 @@ function Router() {
       </Route>
       <Route path="/new-request">
         <PrivateRoute component={NewRequestPage} />
+      </Route>
+      <Route path="/request/:id">
+        <PrivateRoute component={RequestStatusPage} />
       </Route>
 
       {/* Protected Admin Routes */}

@@ -6,6 +6,8 @@ import { api } from "@shared/routes";
 import { z } from "zod";
 import session from "express-session";
 import MemoryStore from "memorystore";
+import PgSession from "connect-pg-simple";
+import { pool } from "./db";
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
@@ -13,6 +15,7 @@ import { promisify } from "util";
 
 const scryptAsync = promisify(scrypt);
 const MemoryStoreSession = MemoryStore(session);
+const PgStore = PgSession(session);
 
 async function hashPassword(password: string) {
   const salt = randomBytes(16).toString("hex");
@@ -31,11 +34,15 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  // Session setup
+  // Session setup - use PostgreSQL in production, memory in development
+  const sessionStore = process.env.NODE_ENV === "production"
+    ? new PgStore({ pool, tableName: "session" })
+    : new MemoryStoreSession({ checkPeriod: 86400000 });
+
   app.use(
     session({
-      cookie: { maxAge: 86400000 },
-      store: new MemoryStoreSession({ checkPeriod: 86400000 }),
+      cookie: { maxAge: 86400000, secure: process.env.NODE_ENV === "production", httpOnly: true, sameSite: "lax" },
+      store: sessionStore,
       resave: false,
       saveUninitialized: false,
       secret: process.env.SESSION_SECRET || "dev_secret",

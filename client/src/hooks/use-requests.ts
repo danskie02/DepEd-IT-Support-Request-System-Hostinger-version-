@@ -2,14 +2,18 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, buildUrl, type CreateRequestPayload, type UpdateRequestStatusPayload } from "@shared/routes";
 import { useToast } from "@/hooks/use-toast";
 
-export function useRequests() {
+export function useRequests(autoRefresh = false) {
   return useQuery({
     queryKey: [api.requests.list.path],
     queryFn: async () => {
-      const res = await fetch(api.requests.list.path);
+      const res = await fetch(api.requests.list.path, {
+        credentials: "include", // Include cookies for session
+      });
       if (!res.ok) throw new Error("Failed to fetch requests");
       return api.requests.list.responses[200].parse(await res.json());
     },
+    refetchInterval: autoRefresh ? 60000 : false, // Auto-refresh every 60 seconds if enabled
+    refetchIntervalInBackground: autoRefresh, // Continue refreshing even when tab is in background
   });
 }
 
@@ -22,6 +26,7 @@ export function useCreateRequest() {
       const res = await fetch(api.requests.create.path, {
         method: api.requests.create.method,
         headers: { "Content-Type": "application/json" },
+        credentials: "include", // Include cookies for session
         body: JSON.stringify(data),
       });
       if (!res.ok) throw new Error("Failed to create request");
@@ -37,6 +42,21 @@ export function useCreateRequest() {
   });
 }
 
+export function useRequest(id: number) {
+  return useQuery({
+    queryKey: [api.requests.get.path, id],
+    queryFn: async () => {
+      const url = buildUrl(api.requests.get.path, { id });
+      const res = await fetch(url, {
+        credentials: "include", // Include cookies for session
+      });
+      if (!res.ok) throw new Error("Failed to fetch request");
+      return api.requests.get.responses[200].parse(await res.json());
+    },
+    enabled: !!id,
+  });
+}
+
 export function useUpdateRequestStatus() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -47,6 +67,7 @@ export function useUpdateRequestStatus() {
       const res = await fetch(url, {
         method: api.requests.updateStatus.method,
         headers: { "Content-Type": "application/json" },
+        credentials: "include", // Include cookies for session
         body: JSON.stringify(data),
       });
       if (!res.ok) throw new Error("Failed to update status");

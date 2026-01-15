@@ -1,19 +1,39 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, ShieldCheck } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Loader2, ShieldCheck, AlertCircle } from "lucide-react";
 
 export default function VerifyOtpPage() {
-  const [location] = useLocation();
-  const { verifyOtp, isVerifying } = useAuth();
+  const [, setLocation] = useLocation();
+  const { verifyOtp, isVerifying, user } = useAuth();
   const [code, setCode] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   // Extract userId from query params
   const params = new URLSearchParams(window.location.search);
   const userId = params.get("userId");
+
+  // If user is already verified and logged in, redirect them
+  useEffect(() => {
+    if (user && user.isVerified) {
+      if (user.role === 'admin') {
+        setLocation("/admin/dashboard");
+      } else {
+        setLocation("/dashboard");
+      }
+    }
+  }, [user, setLocation]);
+
+  // Handle Enter key press
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && code.length === 6 && !isVerifying) {
+      handleVerify();
+    }
+  };
 
   if (!userId) {
     return (
@@ -21,7 +41,7 @@ export default function VerifyOtpPage() {
         <Card className="w-full max-w-md">
           <CardContent className="pt-6 text-center">
             <p className="text-red-500 mb-4">Invalid session. Please login again.</p>
-            <Button onClick={() => window.location.href = "/login"}>Go to Login</Button>
+            <Button onClick={() => setLocation("/login")}>Go to Login</Button>
           </CardContent>
         </Card>
       </div>
@@ -29,7 +49,19 @@ export default function VerifyOtpPage() {
   }
 
   const handleVerify = () => {
-    verifyOtp({ userId: parseInt(userId), code });
+    setError(null);
+    if (code.length !== 6) {
+      setError("Please enter a 6-digit code");
+      return;
+    }
+    verifyOtp(
+      { userId: parseInt(userId), code },
+      {
+        onError: (err: Error) => {
+          setError(err.message || "Invalid or expired OTP code. Please try again.");
+        }
+      }
+    );
   };
 
   return (
@@ -45,25 +77,44 @@ export default function VerifyOtpPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6 pt-4">
+          {error && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+          
           <div className="space-y-2">
             <Input 
               value={code}
-              onChange={(e) => setCode(e.target.value)}
+              onChange={(e) => {
+                setCode(e.target.value.replace(/\D/g, '').slice(0, 6));
+                setError(null);
+              }}
+              onKeyPress={handleKeyPress}
               placeholder="000000"
               className="text-center text-3xl tracking-[1em] font-mono h-16"
               maxLength={6}
+              autoFocus
             />
             <p className="text-xs text-center text-muted-foreground">
-              Hint: Use '123456' for demo purposes
+              Check your terminal/console for the OTP code (for development)
             </p>
           </div>
           
           <Button 
             onClick={handleVerify} 
             className="w-full h-12 text-lg font-bold" 
-            disabled={isVerifying || code.length < 6}
+            disabled={isVerifying || code.length !== 6}
           >
-            {isVerifying ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : "Verify Code"}
+            {isVerifying ? (
+              <>
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                Verifying...
+              </>
+            ) : (
+              "Verify Code"
+            )}
           </Button>
         </CardContent>
       </Card>
