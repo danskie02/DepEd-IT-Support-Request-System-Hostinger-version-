@@ -140,7 +140,18 @@ export async function registerRoutes(
       const hashedPassword = await hashPassword(input.password);
       const user = await storage.createUser({ ...input, password: hashedPassword });
 
-      res.status(201).json({ userId: user.id, message: "Registration successful. Please login." });
+      // Generate and send OTP for new users (same as login flow)
+      const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+      await storage.createOtp(user.id, otpCode);
+
+      // Send OTP via Email and SMS
+      const emailResult = await sendOtpViaEmail(user.email, otpCode, user.name);
+      const smsResult = await sendOtpViaSms(user.phone, otpCode);
+
+      console.log(`[OTP SENT - NEW USER] User: ${user.email}, Code: ${otpCode}`);
+      console.log(`[OTP CHANNELS] Email: ${emailResult.success ? 'Sent' : 'Failed'}, SMS: ${smsResult.success ? 'Sent' : 'Failed'}`);
+
+      res.status(201).json({ userId: user.id, message: "Registration successful. OTP sent to your email and phone." });
     } catch (err) {
       if (err instanceof z.ZodError) {
         res.status(400).json({ message: err.errors[0].message });
