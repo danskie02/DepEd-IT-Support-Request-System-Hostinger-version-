@@ -11,10 +11,18 @@ import { eq, desc } from "drizzle-orm";
 export interface IStorage {
   // User operations
   getUser(id: number): Promise<User | undefined>;
+  getUserById(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
+  getUserByTelegramChatId(chatId: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUserVerified(id: number, verified: boolean): Promise<void>;
+  updateUserTelegramChatId(id: number, chatId: string): Promise<void>;
+  updateAdminProfile(id: number, data: { email: string; phone: string }): Promise<void>;
+  getAllUsers(): Promise<User[]>;
+  updateUser(id: number, data: Partial<Omit<User, 'id' | 'createdAt'>>): Promise<User | undefined>;
+  updateUserPassword(id: number, hashedPassword: string): Promise<void>;
+  deleteUser(id: number): Promise<void>;
   
   // OTP operations
   createOtp(userId: number, code: string): Promise<void>;
@@ -30,6 +38,11 @@ export interface IStorage {
 
 export class DatabaseStorage implements IStorage {
   async getUser(id: number): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
+  }
+
+  async getUserById(id: number): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
   }
@@ -51,6 +64,39 @@ export class DatabaseStorage implements IStorage {
 
   async updateUserVerified(id: number, verified: boolean): Promise<void> {
     await db.update(users).set({ isVerified: verified }).where(eq(users.id, id));
+  }
+
+  async getUserByTelegramChatId(chatId: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.telegramChatId, chatId));
+    return user;
+  }
+
+  async updateUserTelegramChatId(id: number, chatId: string): Promise<void> {
+    await db.update(users).set({ telegramChatId: chatId }).where(eq(users.id, id));
+  }
+
+  async updateAdminProfile(id: number, data: { email: string; phone: string }): Promise<void> {
+    await db.update(users).set({ 
+      email: data.email,
+      phone: data.phone 
+    }).where(eq(users.id, id));
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return await db.select().from(users).orderBy(users.id);
+  }
+
+  async updateUser(id: number, data: Partial<Omit<User, 'id' | 'createdAt'>>): Promise<User | undefined> {
+    const [updated] = await db.update(users).set(data).where(eq(users.id, id)).returning();
+    return updated;
+  }
+
+  async updateUserPassword(id: number, hashedPassword: string): Promise<void> {
+    await db.update(users).set({ password: hashedPassword }).where(eq(users.id, id));
+  }
+
+  async deleteUser(id: number): Promise<void> {
+    await db.delete(users).where(eq(users.id, id));
   }
 
   async createOtp(userId: number, code: string): Promise<void> {

@@ -3,6 +3,7 @@ config({ override: true }); // Override system environment variables with .env f
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
+import { initializeTelegramPolling } from "./telegram";
 import { createServer } from "http";
 
 const app = express();
@@ -80,6 +81,14 @@ app.use((req, res, next) => {
   } else {
     const { setupVite } = await import("./vite");
     await setupVite(httpServer, app);
+  }
+
+  // Initialize Telegram bot polling mode
+  try {
+    await initializeTelegramPolling();
+  } catch (error) {
+    console.error('[TELEGRAM] Failed to initialize polling:', error);
+    // Don't fail the entire server if Telegram initialization fails
   }
 
   // ALWAYS serve the app on the port specified in the environment variable PORT

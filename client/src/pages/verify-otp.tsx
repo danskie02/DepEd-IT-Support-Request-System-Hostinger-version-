@@ -73,7 +73,7 @@ export default function VerifyOtpPage() {
           </div>
           <CardTitle className="text-2xl font-bold">Verify Identity</CardTitle>
           <CardDescription>
-            Enter the 6-digit code sent to your registered contact.
+            Enter the 6-digit code sent to your email and Telegram.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6 pt-4">
@@ -98,7 +98,7 @@ export default function VerifyOtpPage() {
               autoFocus
             />
             <p className="text-xs text-center text-muted-foreground">
-              Check your terminal/console for the OTP code (for development)
+              Check your email and Telegram for the OTP code
             </p>
           </div>
           

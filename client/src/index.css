@@ -4,28 +4,28 @@
 @tailwind utilities;
 
 :root {
-  /* DepEd Inspired Palette */
+  /* DepEd Marinduque Formal Palette - Blue, White, Yellow */
   --background: 0 0% 100%;       /* White */
-  --foreground: 0 0% 10%;        /* Near Black */
+  --foreground: 205 35% 15%;     /* Dark Blue-Gray */
 
-  --primary: 353 85% 44%;        /* DepEd Red #CE1126 */
+  --primary: 205 90% 35%;        /* Formal Blue #003D7A */
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 48 100% 49%;      /* DepEd Yellow #FCE300 */
-  --secondary-foreground: 0 0% 10%;
+  --secondary: 43 100% 50%;      /* Bright Yellow #FFCC00 */
+  --secondary-foreground: 205 35% 15%;
 
-  --muted: 210 40% 96.1%;
-  --muted-foreground: 215.4 16.3% 46.9%;
+  --muted: 205 20% 92%;          /* Light Blue-Gray */
+  --muted-foreground: 205 20% 45%;
 
-  --accent: 210 40% 96.1%;
-  --accent-foreground: 222.2 47.4% 11.2%;
+  --accent: 43 100% 50%;         /* Yellow Accent */
+  --accent-foreground: 205 35% 15%;
 
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 210 40% 98%;
 
-  --border: 214.3 31.8% 91.4%;
-  --input: 214.3 31.8% 91.4%;
-  --ring: 353 85% 44%;
+  --border: 205 30% 88%;         /* Blue-tinted Border */
+  --input: 205 30% 95%;          /* Blue-tinted Input */
+  --ring: 205 90% 35%;           /* Blue Ring */
 
   --radius: 0.5rem;
 

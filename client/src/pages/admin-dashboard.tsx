@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { useRequests, useUpdateRequestStatus } from "@/hooks/use-requests";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -6,12 +7,13 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Textarea } from "@/components/ui/textarea";
 import { StatusBadge, PriorityBadge } from "@/components/status-badge";
 import { formatLocalDate } from "@/lib/date-utils";
-import { Search, Filter, Eye, CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { Search, Filter, Eye, CheckCircle, XCircle, Loader2, Settings, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 
 export default function AdminDashboard() {
+  const [, navigate] = useLocation();
   const { data: requests, isLoading } = useRequests(true); // Enable auto-refresh for admin
   const { mutate: updateStatus, isPending: isUpdating } = useUpdateRequestStatus();
 
@@ -71,6 +73,26 @@ export default function AdminDashboard() {
             </span>
           </div>
           <p className="text-muted-foreground mt-1">Manage and review all incoming service requests</p>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate("/admin/users")}
+            className="gap-2"
+          >
+            <Users className="w-4 h-4" />
+            Users
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate("/admin/settings")}
+            className="gap-2"
+          >
+            <Settings className="w-4 h-4" />
+            Settings
+          </Button>
         </div>
       </div>
 

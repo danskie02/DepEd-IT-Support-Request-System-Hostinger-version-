@@ -64,7 +64,25 @@ export const api = {
         200: z.custom<typeof users.$inferSelect>(),
         401: z.void(),
       },
-    }
+    },
+    profile: {
+      method: 'POST' as const,
+      path: '/api/admin/profile',
+      input: z.object({
+        email: z.string().email('Invalid email format'),
+        phone: z.string().min(1, 'Phone is required'),
+      }),
+      responses: {
+        200: z.object({
+          ok: z.boolean(),
+          message: z.string(),
+          user: z.custom<typeof users.$inferSelect>(),
+        }),
+        400: errorSchemas.validation,
+        401: errorSchemas.unauthorized,
+        403: z.object({ message: z.string() }),
+      },
+    },
   },
   requests: {
     list: {
@@ -100,6 +118,76 @@ export const api = {
       }),
       responses: {
         200: z.custom<typeof requests.$inferSelect>(),
+        404: errorSchemas.notFound,
+      },
+    },
+  },
+  users: {
+    list: {
+      method: 'GET' as const,
+      path: '/api/admin/users',
+      responses: {
+        200: z.array(z.custom<typeof users.$inferSelect>()),
+        401: errorSchemas.unauthorized,
+        403: z.object({ message: z.string() }),
+      },
+    },
+    create: {
+      method: 'POST' as const,
+      path: '/api/admin/users',
+      input: z.object({
+        username: z.string().min(3, 'Username must be at least 3 characters'),
+        email: z.string().email('Invalid email format'),
+        phone: z.string().min(1, 'Phone is required'),
+        name: z.string().min(1, 'Name is required'),
+        password: z.string().min(6, 'Password must be at least 6 characters'),
+        role: z.enum(['user', 'admin']).default('user'),
+      }),
+      responses: {
+        201: z.object({ id: z.number(), message: z.string() }),
+        400: errorSchemas.validation,
+        401: errorSchemas.unauthorized,
+        403: z.object({ message: z.string() }),
+      },
+    },
+    updatePassword: {
+      method: 'PATCH' as const,
+      path: '/api/admin/users/:id/password',
+      input: z.object({
+        password: z.string().min(6, 'Password must be at least 6 characters'),
+      }),
+      responses: {
+        200: z.object({ message: z.string() }),
+        400: errorSchemas.validation,
+        401: errorSchemas.unauthorized,
+        403: z.object({ message: z.string() }),
+        404: errorSchemas.notFound,
+      },
+    },
+    update: {
+      method: 'PATCH' as const,
+      path: '/api/admin/users/:id',
+      input: z.object({
+        email: z.string().email('Invalid email format').optional(),
+        phone: z.string().min(1, 'Phone is required').optional(),
+        name: z.string().min(1, 'Name is required').optional(),
+        role: z.enum(['user', 'admin']).optional(),
+      }),
+      responses: {
+        200: z.object({ message: z.string(), user: z.custom<typeof users.$inferSelect>() }),
+        400: errorSchemas.validation,
+        401: errorSchemas.unauthorized,
+        403: z.object({ message: z.string() }),
+        404: errorSchemas.notFound,
+      },
+    },
+    delete: {
+      method: 'DELETE' as const,
+      path: '/api/admin/users/:id',
+      responses: {
+        200: z.object({ message: z.string() }),
+        401: errorSchemas.unauthorized,
+        403: z.object({ message: z.string() }),
         404: errorSchemas.notFound,
       },
     },

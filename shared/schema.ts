@@ -6,6 +6,7 @@ import { z } from "zod";
 
 export const userRoleEnum = pgEnum("user_role", ["admin", "user"]);
 export const requestStatusEnum = pgEnum("request_status", ["pending", "approved", "denied"]);
+export const smsJobStatusEnum = pgEnum("sms_job_status", ["pending", "sending", "sent", "failed"]);
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -14,6 +15,7 @@ export const users = pgTable("users", {
   name: text("name").notNull(),
   email: text("email").notNull(),
   phone: text("phone").notNull(),
+  telegramChatId: text("telegram_chat_id"), // Telegram chat ID for OTP delivery
   role: userRoleEnum("role").default("user").notNull(),
   isVerified: boolean("is_verified").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -37,6 +39,23 @@ export const otps = pgTable("otps", {
   userId: integer("user_id").references(() => users.id).notNull(),
   code: text("code").notNull(),
   expiresAt: timestamp("expires_at").notNull(),
+});
+
+export const smsJobs = pgTable("sms_jobs", {
+  id: serial("id").primaryKey(),
+  to: text("to").notNull(),
+  message: text("message").notNull(),
+  kind: text("kind").notNull(), // otp | request_update | other
+  userId: integer("user_id").references(() => users.id),
+  requestId: integer("request_id").references(() => requests.id),
+  status: smsJobStatusEnum("status").default("pending").notNull(),
+  attempts: integer("attempts").default(0).notNull(),
+  lastError: text("last_error"),
+  lockedAt: timestamp("locked_at"),
+  lockedBy: text("locked_by"),
+  sentAt: timestamp("sent_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 export const requestsRelations = relations(requests, ({ one }) => ({

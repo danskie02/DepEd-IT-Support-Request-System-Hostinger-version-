@@ -28,9 +28,9 @@ export default function RegisterPage() {
       <div className="mb-8 text-center">
         <div className="flex items-center justify-center gap-3 mb-2">
           <img
-            src="/deped-logo.png"
+            src="/DepEdMdq_logo.jfif"
             alt="DepEd Logo"
-            className="h-10 w-auto object-contain"
+            className="h-24 w-auto object-contain"
           />
           <h1 className="text-3xl font-display font-bold text-primary">Create Account</h1>
         </div>

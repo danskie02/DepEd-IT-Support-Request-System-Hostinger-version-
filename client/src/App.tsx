@@ -13,6 +13,8 @@ import Dashboard from "@/pages/dashboard";
 import NewRequestPage from "@/pages/new-request";
 import RequestStatusPage from "@/pages/request-status";
 import AdminDashboard from "@/pages/admin-dashboard";
+import AdminSettings from "@/pages/admin-settings";
+import AdminUsers from "@/pages/admin-users";
 import NotFound from "@/pages/not-found";
 import { Loader2 } from "lucide-react";
 
@@ -67,6 +69,12 @@ function Router() {
       {/* Protected Admin Routes */}
       <Route path="/admin/dashboard">
         <PrivateRoute component={AdminDashboard} adminOnly />
+      </Route>
+      <Route path="/admin/settings">
+        <PrivateRoute component={AdminSettings} adminOnly />
+      </Route>
+      <Route path="/admin/users">
+        <PrivateRoute component={AdminUsers} adminOnly />
       </Route>
 
       <Route component={NotFound} />
