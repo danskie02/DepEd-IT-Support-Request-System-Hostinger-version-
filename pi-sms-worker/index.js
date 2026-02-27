@@ -1,12 +1,18 @@
 import pg from "pg";
 import os from "node:os";
 import { exec } from "node:child_process";
+import { config } from "dotenv";
+import path from "path";
+
+// Load .env file explicitly
+config({ path: path.resolve(process.cwd(), ".env"), override: true });
 
 const { Pool } = pg;
 
 const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) {
-  console.error("Missing DATABASE_URL in environment.");
+  console.error("[PI WORKER] Missing DATABASE_URL in environment.");
+  console.error("[PI WORKER] Checked for .env at:", path.resolve(process.cwd(), ".env"));
   process.exit(1);
 }
 

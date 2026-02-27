@@ -1,5 +1,10 @@
 import { config } from "dotenv";
-config({ override: true }); // Ensure .env is loaded before creating connection
+import path from "path";
+
+// Load .env from the workspace root (up from dist/)
+const envPath = path.resolve(process.cwd(), ".env");
+
+config({ path: envPath, override: true }); // Ensure .env is loaded before creating connection
 
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
@@ -8,8 +13,11 @@ import * as schema from "@shared/schema";
 const { Pool } = pg;
 
 if (!process.env.DATABASE_URL) {
+  console.error(`[DB ERROR] DATABASE_URL not found!`);
+  console.error(`[DB ERROR] Looked in: ${envPath}`);
+  console.error(`[DB ERROR] CWD: ${process.cwd()}`);
   throw new Error(
-    "DATABASE_URL must be set. Did you forget to provision a database?",
+    "DATABASE_URL must be set in .env file. Did you forget to provision a database?",
   );
 }
 
