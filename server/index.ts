@@ -84,12 +84,13 @@ app.use((req, res, next) => {
   }
 
   // Initialize Telegram bot polling mode
-  try {
-    await initializeTelegramPolling();
-  } catch (error) {
-    console.error('[TELEGRAM] Failed to initialize polling:', error);
-    // Don't fail the entire server if Telegram initialization fails
-  }
+  // DISABLED: Telegram service is temporarily suspended
+  // try {
+  //   await initializeTelegramPolling();
+  // } catch (error) {
+  //   console.error('[TELEGRAM] Failed to initialize polling:', error);
+  //   // Don't fail the entire server if Telegram initialization fails
+  // }
 
   // ALWAYS serve the app on the port specified in the environment variable PORT
   // Other ports are firewalled. Default to 5000 if not specified.

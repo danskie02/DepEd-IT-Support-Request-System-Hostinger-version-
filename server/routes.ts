@@ -12,7 +12,11 @@ import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
-import { sendOtpViaMultipleChannels, sendTelegramMessage, notifyUserRequestUpdate, notifyUserRequestUpdateSms } from "./telegram";
+// DISABLED: Telegram service is temporarily suspended
+// import { sendOtpViaMultipleChannels, sendTelegramMessage, notifyUserRequestUpdate, notifyUserRequestUpdateSms } from "./telegram";
+// Using email and SMS only
+import { sendOtpViaEmail, notifyUserRequestUpdateSms } from "./telegram";
+import { sendOtpViaSms } from "./sms";
 
 const scryptAsync = promisify(scrypt);
 const MemoryStoreSession = MemoryStore(session);
@@ -77,23 +81,12 @@ export async function registerRoutes(
       const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
       await storage.createOtp(user.id, otpCode);
       
-      // Send OTP via Email and Telegram
-      const otpResults = await sendOtpViaMultipleChannels(
-        user.email,
-        user.phone,
-        otpCode,
-        user.name,
-        user.telegramChatId || undefined,
-        user.id
-      );
+      // Send OTP via Email and SMS (Telegram is disabled)
+      const emailResult = await sendOtpViaEmail(user.email, otpCode, user.name);
+      const smsResult = await sendOtpViaSms(user.phone, otpCode);
 
       console.log(`[OTP SENT] User: ${user.email}, Code: ${otpCode}`);
-      console.log(`[OTP CHANNELS] Email: ${otpResults.email.success ? 'Sent' : 'Failed'}, Telegram: ${otpResults.telegram.success ? 'Sent' : 'Failed'}, SMS: ${otpResults.sms.success ? 'Sent' : 'Failed'}`);
-      if (user.telegramChatId) {
-        console.log(`[TELEGRAM INFO] Chat ID: ${user.telegramChatId}`);
-      } else {
-        console.log(`[TELEGRAM INFO] User has not linked Telegram. Instruct them to start the bot and use /link <email>`);
-      }
+      console.log(`[OTP CHANNELS] Email: ${emailResult.success ? 'Sent' : 'Failed'}, SMS: ${smsResult.success ? 'Sent' : 'Failed'}`);
 
       // Return success but don't log in fully yet - wait for verify
       // For this MVP, we'll store the pending user ID in session slightly differently or just return it
@@ -102,9 +95,7 @@ export async function registerRoutes(
       
       res.json({ 
         userId: user.id, 
-        message: user.telegramChatId 
-          ? "OTP sent to your registered email and Telegram" 
-          : "OTP sent to your registered email. Link Telegram in bot for faster delivery." 
+        message: "OTP sent to your registered email and phone."
       });
     } catch (err) {
       next(err);
@@ -197,17 +188,20 @@ export async function registerRoutes(
       // @ts-ignore
       const user = req.user;
       if (user?.telegramChatId) {
-        const message = `📝 <b>Request Submitted Successfully</b>\n\n` +
-          `<b>Request ID:</b> #${request.id}\n` +
-          `<b>Title:</b> ${request.title}\n` +
-          `<b>Status:</b> <code>Pending</code>\n\n` +
-          `Your request has been received and is awaiting admin review.\n\n` +
-          `📱 <b>Track your request:</b>\n` +
-          `<a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/requests/${request.id}">View Request</a>\n\n` +
-          `We'll notify you when there's an update! 🎓`;
-        
-        await sendTelegramMessage(user.telegramChatId, message);
-        console.log(`[REQUEST CREATED - TELEGRAM CONFIRMATION] Request #${request.id}, User: ${user.name}`);
+        // DISABLED: Telegram notifications are suspended
+        // const message = `📝 <b>Request Submitted Successfully</b>\n\n` +
+        //   `<b>Request ID:</b> #${request.id}\n` +
+        //   `<b>Title:</b> ${request.title}\n` +
+        //   `<b>Status:</b> <code>Pending</code>\n\n` +
+        //   `Your request has been received and is awaiting admin review.\n\n` +
+        //   `📱 <b>Track your request:</b>\n` +
+        //   `<a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/requests/${request.id}">View Request</a>\n\n` +
+        //   `We'll notify you when there's an update! 🎓`;
+        // 
+        // if (user?.telegramChatId) {
+        //   await sendTelegramMessage(user.telegramChatId, message);
+        //   console.log(`[REQUEST CREATED - TELEGRAM CONFIRMATION] Request #${request.id}, User: ${user.name}`);
+        // }
       }
       
       res.status(201).json(request);
@@ -246,24 +240,25 @@ export async function registerRoutes(
       
       if (!updated) return res.status(404).json({ message: "Not found" });
       
-      // Fetch user details to send Telegram notification
+      // Fetch user details to send notifications
       const user = await storage.getUser(updated.userId);
       
-      if (user && user.telegramChatId) {
-        // Send Telegram notification to user about request status update
-        await notifyUserRequestUpdate(
-          user.telegramChatId,
-          updated.id,
-          updated.title,
-          status as 'approved' | 'denied' | 'pending',
-          adminResponse,
-          user.name
-        );
-      } else if (!user?.telegramChatId) {
-        console.log(`[REQUEST UPDATE] User ${user?.name} (ID: ${updated.userId}) has not linked Telegram. They will need to check the website.`);
-      }
+      // DISABLED: Telegram notifications are suspended
+      // if (user && user.telegramChatId) {
+      //   // Send Telegram notification to user about request status update
+      //   await notifyUserRequestUpdate(
+      //     user.telegramChatId,
+      //     updated.id,
+      //     updated.title,
+      //     status as 'approved' | 'denied' | 'pending',
+      //     adminResponse,
+      //     user.name
+      //   );
+      // } else if (!user?.telegramChatId) {
+      //   console.log(`[REQUEST UPDATE] User ${user?.name} (ID: ${updated.userId}) has not linked Telegram. They will need to check the website.`);
+      // }
 
-      // Send SMS notification as well (if phone is present + SMS gateway configured)
+      // Send SMS notification (if phone is present + SMS gateway configured)
       if (user?.phone) {
         const smsOk = await notifyUserRequestUpdateSms(
           user.phone,
@@ -288,89 +283,89 @@ export async function registerRoutes(
     }
   });
 
-  // Telegram Bot Webhook - Handle messages from Telegram bot
-  app.post('/api/telegram/webhook', async (req, res) => {
-    try {
-      const { message } = req.body;
+  // DISABLED: Telegram Bot Webhook - Telegram service is temporarily suspended
+  // app.post('/api/telegram/webhook', async (req, res) => {
+  //   try {
+  //     const { message } = req.body;
 
-      if (!message || !message.text) {
-        return res.json({ ok: true });
-      }
+  //     if (!message || !message.text) {
+  //       return res.json({ ok: true });
+  //     }
 
-      const chatId = message.chat.id;
-      const text = message.text.trim();
-      const firstName = message.chat.first_name;
+  //     const chatId = message.chat.id;
+  //     const text = message.text.trim();
+  //     const firstName = message.chat.first_name;
 
-      console.log(`[TELEGRAM BOT] Chat ID: ${chatId}, Message: ${text}`);
+  //     console.log(`[TELEGRAM BOT] Chat ID: ${chatId}, Message: ${text}`);
 
-      // Handle /start command
-      if (text === '/start') {
-        const welcomeMsg = `👋 Welcome to <b>DepEd IT Services</b>!\n\nTo receive OTP codes here, link your account:\n\n/link <email>\n\nExample: <code>/link juan@deped.gov.ph</code>`;
-        await sendTelegramMessage(chatId, welcomeMsg);
-        return res.json({ ok: true });
-      }
+  //     // Handle /start command
+  //     if (text === '/start') {
+  //       const welcomeMsg = `👋 Welcome to <b>DepEd IT Services</b>!\n\nTo receive OTP codes here, link your account:\n\n/link <email>\n\nExample: <code>/link juan@deped.gov.ph</code>`;
+  //       await sendTelegramMessage(chatId, welcomeMsg);
+  //       return res.json({ ok: true });
+  //     }
 
-      // Handle /link command to link account
-      if (text.startsWith('/link')) {
-        const email = text.replace('/link', '').trim();
+  //     // Handle /link command to link account
+  //     if (text.startsWith('/link')) {
+  //       const email = text.replace('/link', '').trim();
 
-        if (!email || !email.includes('@')) {
-          await sendTelegramMessage(chatId, '❌ Invalid format. Use: /link <email>\n\nExample: /link juan@deped.gov.ph');
-          return res.json({ ok: true });
-        }
+  //       if (!email || !email.includes('@')) {
+  //         await sendTelegramMessage(chatId, '❌ Invalid format. Use: /link <email>\n\nExample: /link juan@deped.gov.ph');
+  //         return res.json({ ok: true });
+  //       }
 
-        const user = await storage.getUserByEmail(email);
+  //       const user = await storage.getUserByEmail(email);
 
-        if (!user) {
-          await sendTelegramMessage(chatId, `❌ No account found for ${email}. Please register first at the DepEd IT Services portal.`);
-          return res.json({ ok: true });
-        }
+  //       if (!user) {
+  //         await sendTelegramMessage(chatId, `❌ No account found for ${email}. Please register first at the DepEd IT Services portal.`);
+  //         return res.json({ ok: true });
+  //       }
 
-        // Update user's telegram chat ID
-        await storage.updateUserTelegramChatId(user.id, chatId.toString());
+  //       // Update user's telegram chat ID
+  //       await storage.updateUserTelegramChatId(user.id, chatId.toString());
 
-        const confirmMsg = `✅ <b>Account Linked!</b>\n\nYour account ${email} is now linked.\n\n🔐 You will receive OTP codes via Telegram during login.`;
-        await sendTelegramMessage(chatId, confirmMsg);
+  //       const confirmMsg = `✅ <b>Account Linked!</b>\n\nYour account ${email} is now linked.\n\n🔐 You will receive OTP codes via Telegram during login.`;
+  //       await sendTelegramMessage(chatId, confirmMsg);
 
-        console.log(`[TELEGRAM LINKED] User: ${email}, Chat ID: ${chatId}`);
-        return res.json({ ok: true });
-      }
+  //       console.log(`[TELEGRAM LINKED] User: ${email}, Chat ID: ${chatId}`);
+  //       return res.json({ ok: true });
+  //     }
 
-      // Handle /unlink command
-      if (text === '/unlink') {
-        const user = await storage.getUserByTelegramChatId(chatId.toString());
+  //     // Handle /unlink command
+  //     if (text === '/unlink') {
+  //       const user = await storage.getUserByTelegramChatId(chatId.toString());
 
-        if (!user) {
-          await sendTelegramMessage(chatId, '❌ This Telegram account is not linked to any user.');
-          return res.json({ ok: true });
-        }
+  //       if (!user) {
+  //         await sendTelegramMessage(chatId, '❌ This Telegram account is not linked to any user.');
+  //         return res.json({ ok: true });
+  //       }
 
-        await storage.updateUserTelegramChatId(user.id, '');
+  //       await storage.updateUserTelegramChatId(user.id, '');
 
-        const unlinkMsg = `✅ <b>Account Unlinked!</b>\n\nYour Telegram has been unlinked from your account.`;
-        await sendTelegramMessage(chatId, unlinkMsg);
+  //       const unlinkMsg = `✅ <b>Account Unlinked!</b>\n\nYour Telegram has been unlinked from your account.`;
+  //       await sendTelegramMessage(chatId, unlinkMsg);
 
-        console.log(`[TELEGRAM UNLINKED] User: ${user.email}, Chat ID: ${chatId}`);
-        return res.json({ ok: true });
-      }
+  //       console.log(`[TELEGRAM UNLINKED] User: ${user.email}, Chat ID: ${chatId}`);
+  //       return res.json({ ok: true });
+  //     }
 
-      // Handle /help command
-      if (text === '/help') {
-        const helpMsg = `📖 <b>Available Commands</b>\n\n/start - Welcome message\n/link &lt;email&gt; - Link your account\n/unlink - Unlink your account\n/help - Show this message`;
-        await sendTelegramMessage(chatId, helpMsg);
-        return res.json({ ok: true });
-      }
+  //     // Handle /help command
+  //     if (text === '/help') {
+  //       const helpMsg = `📖 <b>Available Commands</b>\n\n/start - Welcome message\n/link &lt;email&gt; - Link your account\n/unlink - Unlink your account\n/help - Show this message`;
+  //       await sendTelegramMessage(chatId, helpMsg);
+  //       return res.json({ ok: true });
+  //     }
 
-      // Default response for unknown commands
-      const defaultMsg = `ℹ️ I didn't understand that command. Try /help for available commands.`;
-      await sendTelegramMessage(chatId, defaultMsg);
+  //     // Default response for unknown commands
+  //     const defaultMsg = `ℹ️ I didn't understand that command. Try /help for available commands.`;
+  //     await sendTelegramMessage(chatId, defaultMsg);
 
-      return res.json({ ok: true });
-    } catch (err) {
-      console.error('[TELEGRAM WEBHOOK ERROR]', err);
-      res.json({ ok: true }); // Always return 200 to Telegram
-    }
-  });
+  //     return res.json({ ok: true });
+  //   } catch (err) {
+  //     console.error('[TELEGRAM WEBHOOK ERROR]', err);
+  //     res.json({ ok: true }); // Always return 200 to Telegram
+  //   }
+  // });
 
   // Admin Profile Update Endpoint
   app.post('/api/admin/profile', async (req, res) => {
