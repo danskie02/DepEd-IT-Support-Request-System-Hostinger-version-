@@ -7,6 +7,11 @@ import { initializeTelegramPolling } from "./telegram";
 import { createServer } from "http";
 
 const app = express();
+// when running behind Render (or any proxy) we must trust the proxy so that
+// secure cookies and client IPs are handled correctly. express-session will
+// otherwise refuse to set cookies over HTTPS.
+app.set('trust proxy', 1);
+
 const httpServer = createServer(app);
 
 declare module "http" {
