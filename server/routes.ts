@@ -41,7 +41,7 @@ export async function registerRoutes(
 ): Promise<Server> {
   // Session setup - use PostgreSQL in production, memory in development
   const sessionStore = process.env.NODE_ENV === "production"
-    ? new PgStore({ pool, tableName: "session" })
+    ? new PgStore({ pool, tableName: "session", createTableIfMissing: true })
     : new MemoryStoreSession({ checkPeriod: 86400000 });
 
   app.use(
@@ -80,7 +80,7 @@ export async function registerRoutes(
       // Generate OTP
       const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
       await storage.createOtp(user.id, otpCode);
-      
+
       // Send OTP via Email and SMS (Telegram is disabled)
       const emailResult = await sendOtpViaEmail(user.email, otpCode, user.name);
       const smsResult = await sendOtpViaSms(user.phone, otpCode);
@@ -92,9 +92,9 @@ export async function registerRoutes(
       // For this MVP, we'll store the pending user ID in session slightly differently or just return it
       // To keep it simple with passport, we can't fully login yet. 
       // We'll return the userId so the frontend can send it with the OTP.
-      
-      res.json({ 
-        userId: user.id, 
+
+      res.json({
+        userId: user.id,
         message: "OTP sent to your registered email and phone."
       });
     } catch (err) {
@@ -131,7 +131,7 @@ export async function registerRoutes(
   app.post(api.auth.register.path, async (req, res, next) => {
     try {
       const input = api.auth.register.input.parse(req.body);
-      
+
       const existingUser = await storage.getUserByEmail(input.email);
       if (existingUser) {
         return res.status(400).json({ message: "Email already registered" });
@@ -178,10 +178,10 @@ export async function registerRoutes(
   // Request Routes
   app.get(api.requests.list.path, async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send();
-    
+
     // @ts-ignore
     const user = req.user;
-    
+
     // If admin, show all. If user, show only theirs.
     const requests = await storage.getRequests(user.role === 'admin' ? undefined : user.id);
     res.json(requests);
@@ -189,12 +189,12 @@ export async function registerRoutes(
 
   app.post(api.requests.create.path, async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send();
-    
+
     try {
       const input = api.requests.create.input.parse(req.body);
       // @ts-ignore
       const request = await storage.createRequest(req.user.id, input);
-      
+
       // Send confirmation message to user's Telegram (optional)
       // @ts-ignore
       const user = req.user;
@@ -214,7 +214,7 @@ export async function registerRoutes(
         //   console.log(`[REQUEST CREATED - TELEGRAM CONFIRMATION] Request #${request.id}, User: ${user.name}`);
         // }
       }
-      
+
       res.status(201).json(request);
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -227,33 +227,33 @@ export async function registerRoutes(
 
   app.get(api.requests.get.path, async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send();
-    
+
     const request = await storage.getRequest(Number(req.params.id));
     if (!request) return res.status(404).json({ message: "Not found" });
-    
+
     // @ts-ignore
     if (req.user.role !== 'admin' && request.userId !== req.user.id) {
       return res.status(403).json({ message: "Unauthorized" });
     }
-    
+
     res.json(request);
   });
 
   app.patch(api.requests.updateStatus.path, async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send();
-    
+
     // @ts-ignore
     if (req.user.role !== 'admin') return res.status(403).json({ message: "Admin only" });
 
     try {
       const { status, adminResponse } = api.requests.updateStatus.input.parse(req.body);
       const updated = await storage.updateRequestStatus(Number(req.params.id), status, adminResponse);
-      
+
       if (!updated) return res.status(404).json({ message: "Not found" });
-      
+
       // Fetch user details to send notifications
       const user = await storage.getUser(updated.userId);
-      
+
       // DISABLED: Telegram notifications are suspended
       // if (user && user.telegramChatId) {
       //   // Send Telegram notification to user about request status update
@@ -286,7 +286,7 @@ export async function registerRoutes(
 
       res.json(updated);
     } catch (err) {
-       if (err instanceof z.ZodError) {
+      if (err instanceof z.ZodError) {
         res.status(400).json({ message: err.errors[0].message });
       } else {
         throw err;
@@ -452,7 +452,7 @@ export async function registerRoutes(
       });
     } catch (error) {
       console.error('[TEST EMAIL ERROR]', error);
-      res.status(500).json({ 
+      res.status(500).json({
         message: 'Failed to send test email',
         error: error instanceof Error ? error.message : 'Unknown error'
       });
@@ -462,7 +462,7 @@ export async function registerRoutes(
   // User Management Routes (Admin Only)
   app.get(api.users.list.path, async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send();
-    
+
     // @ts-ignore
     if (req.user.role !== 'admin') return res.status(403).json({ message: "Admin only" });
 
@@ -477,7 +477,7 @@ export async function registerRoutes(
 
   app.post(api.users.create.path, async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send();
-    
+
     // @ts-ignore
     if (req.user.role !== 'admin') return res.status(403).json({ message: "Admin only" });
 
@@ -509,9 +509,9 @@ export async function registerRoutes(
         role: input.role,
       });
 
-      res.status(201).json({ 
-        id: newUser.id, 
-        message: `User ${input.username} created successfully` 
+      res.status(201).json({
+        id: newUser.id,
+        message: `User ${input.username} created successfully`
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -525,7 +525,7 @@ export async function registerRoutes(
 
   app.patch(api.users.updatePassword.path, async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send();
-    
+
     // @ts-ignore
     if (req.user.role !== 'admin') return res.status(403).json({ message: "Admin only" });
 
@@ -558,7 +558,7 @@ export async function registerRoutes(
 
   app.patch(api.users.update.path, async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send();
-    
+
     // @ts-ignore
     if (req.user.role !== 'admin') return res.status(403).json({ message: "Admin only" });
 
@@ -575,9 +575,9 @@ export async function registerRoutes(
       // Update user details
       const updated = await storage.updateUser(userId, input);
 
-      res.json({ 
-        message: "User updated successfully", 
-        user: updated 
+      res.json({
+        message: "User updated successfully",
+        user: updated
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -591,7 +591,7 @@ export async function registerRoutes(
 
   app.delete(api.users.delete.path, async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send();
-    
+
     // @ts-ignore
     if (req.user.role !== 'admin') return res.status(403).json({ message: "Admin only" });
 

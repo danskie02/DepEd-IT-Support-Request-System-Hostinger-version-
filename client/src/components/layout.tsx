@@ -54,6 +54,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
         {user.role === 'admin' ? (
           /* Admin: Full width, no sidebar */
           <main className="w-full">
+            {/* show button when not already on dashboard */}
+            {location.startsWith("/admin") && location !== "/admin/dashboard" && (
+              <div className="mb-4">
+                <Link href="/admin/dashboard">
+                  <Button variant="secondary" size="sm">
+                    <LayoutDashboard className="w-4 h-4 mr-2" />
+                    Dashboard
+                  </Button>
+                </Link>
+              </div>
+            )}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 min-h-[500px] p-6 md:p-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
               {children}
             </div>
