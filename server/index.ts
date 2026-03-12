@@ -97,6 +97,31 @@ app.use((req, res, next) => {
   //   // Don't fail the entire server if Telegram initialization fails
   // }
 
+  // start in-process SMS worker if we're using pull mode so that jobs
+  // created by this server are immediately picked up.  Previously the
+  // worker had to be launched separately which meant a misconfigured Pi
+  // running only `npm run start` would enqueue messages and never send
+  // them until the process was restarted (when someone finally remembered
+  // to run the worker manually).  The new behaviour mirrors the old one
+  // but keeps a single process working for most deployments.
+  if ((process.env.SMS_MODE || 'push').toLowerCase().trim() === 'pull') {
+    try {
+      const { startSmsWorker } = await import('./smsWorker');
+      startSmsWorker().catch((e) => console.error('[SMS WORKER] failed', e));
+    } catch (e) {
+      console.error('[SMS WORKER] could not be initialized:', e);
+    }
+  }
+
+  // schedule periodic administrative SMS digests (11 AM & 3 PM local time)
+  try {
+    const { startAdminSchedulers } = await import('./adminNotifier');
+    startAdminSchedulers();
+    console.log('[ADMIN SMS] schedulers initialized');
+  } catch (e) {
+    console.error('[ADMIN SMS] could not start schedulers', e);
+  }
+
   // ALWAYS serve the app on the port specified in the environment variable PORT
   // Other ports are firewalled. Default to 5000 if not specified.
   // this serves both the API and the client.

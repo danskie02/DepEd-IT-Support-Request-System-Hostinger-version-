@@ -1,11 +1,28 @@
 import { db } from "./db";
 import { smsJobs } from "@shared/schema";
 import { sendSms } from "./sms";
-import { eq } from "drizzle-orm";
+import { eq, and, or, lt } from "drizzle-orm";
 
 // process all pending SMS jobs in the database
 async function processPendingJobs() {
-  const jobs = await db.select().from(smsJobs).where(eq(smsJobs.status, "pending"));
+  // pick up either truly pending jobs or ones that appear to be stuck in
+  // the "sending" state for a while.  the latter can happen if the worker
+  // crashes or the host loses connectivity mid‑send; without this logic a
+  // message would remain forever in the queue.
+  const thirtySecondsAgo = new Date(Date.now() - 30_000);
+
+  const pendingJobs = await db.select().from(smsJobs).where(eq(smsJobs.status, "pending"));
+  const staleSending = await db
+    .select()
+    .from(smsJobs)
+    .where(
+      and(
+        eq(smsJobs.status, "sending"),
+        lt(smsJobs.updatedAt, thirtySecondsAgo),
+      )
+    );
+
+  const jobs = [...pendingJobs, ...staleSending];
   for (const job of jobs) {
     try {
       await db
@@ -38,7 +55,7 @@ async function processPendingJobs() {
   }
 }
 
-async function main() {
+export async function startSmsWorker(pollInterval = 5000) {
   console.log("[SMS WORKER] started");
   while (true) {
     try {
@@ -46,11 +63,16 @@ async function main() {
     } catch (e) {
       console.error("[SMS WORKER] unexpected error", e);
     }
-    await new Promise((r) => setTimeout(r, 5000));
+    await new Promise((r) => setTimeout(r, pollInterval));
   }
 }
 
-main().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+// When run directly from the command line we still want the old behavior
+// so `npm run worker` continues to work.  The check below makes sure the
+// module isn't just being *imported* by another script.
+if (import.meta.url === `file://${process.argv[1]}`) {
+  startSmsWorker().catch((e) => {
+    console.error(e);
+    process.exit(1);
+  });
+}

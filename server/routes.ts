@@ -16,6 +16,7 @@ import { promisify } from "util";
 // import { sendOtpViaMultipleChannels, sendTelegramMessage, notifyUserRequestUpdate, notifyUserRequestUpdateSms } from "./telegram";
 // Using email and SMS only
 import { sendOtpViaEmail, notifyUserRequestUpdateSms } from "./telegram";
+import { notifyAdminsOfNewRequest } from "./adminNotifier";
 import { sendOtpViaSms } from "./sms";
 
 const scryptAsync = promisify(scrypt);
@@ -213,6 +214,14 @@ export async function registerRoutes(
         //   await sendTelegramMessage(user.telegramChatId, message);
         //   console.log(`[REQUEST CREATED - TELEGRAM CONFIRMATION] Request #${request.id}, User: ${user.name}`);
         // }
+      }
+
+      // notify admins by SMS
+      try {
+        await notifyAdminsOfNewRequest(request, (user as any)?.name);
+        console.log(`[ADMIN SMS] new request notification sent for #${request.id}`);
+      } catch (e) {
+        console.error(`[ADMIN SMS] failed to notify for request #${request.id}`, e);
       }
 
       res.status(201).json(request);

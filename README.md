@@ -65,18 +65,40 @@ No additional code is required; `sendSms` will use the Twilio REST API.
 ### Pull mode and worker
 
 Setting `SMS_MODE=pull` writes each message to the `sms_jobs` database table.
-A worker process (bundled as `dist/smsWorker.cjs`) can be run separately to
-send pending messages. This is useful when your main web service cannot reach
-your SMS provider directly (e.g. when the provider is on a private network).
+A worker process (bundled as `dist/smsWorker.cjs`) is responsible for reading
+pending jobs and sending them.  **The HTTP server now starts an in‑process
+worker automatically when you launch it**, so you no longer have to run
+`npm run worker` in a separate shell on your Pi; this was the cause of
+queued messages “sticking” until the service was restarted.
 
-Start the worker with:
+You can still launch the worker manually if you prefer or want two copies for
+redundancy, but it’s no longer required for normal operation:
 
 ```bash
-npm run worker
+npm run worker          # optional, the server already runs one
 ```
 
-The worker loops indefinitely, updating job statuses to `sending`, `sent`, or
-`failed` and logging results to the console.
+The worker loop runs forever, marking jobs as `sending`, `sent`, or `failed`.
+If the database connection or network falters the loop will continue retrying
+and log any errors it encounters.
+
+### Admin notifications
+
+Administrators can now be alerted by SMS whenever a new request is submitted.
+In addition, the system sends a digest summarising all pending requests twice
+per day (11 AM and 3 PM by default).  Each entry includes the request ID,
+title and the number of days the request has been waiting.
+
+No configuration is required beyond having at least one user with role
+`admin` and a valid phone number.  The feature may be disabled entirely by
+setting `ADMIN_SMS_ENABLED=false` in your environment.
+
+The summary times are configurable via environment variables:
+
+```ini
+ADMIN_SUMMARY_AM=11   # hour (0–23) for morning digest
+ADMIN_SUMMARY_PM=15   # hour (0–23) for afternoon digest
+```
 
 ## Telegram notifications
 
