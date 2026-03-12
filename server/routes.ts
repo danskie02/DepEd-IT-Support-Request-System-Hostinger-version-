@@ -635,8 +635,8 @@ export async function registerRoutes(
     await storage.createUser({
       username: "admin",
       name: "System Administrator",
-      email: "admin@deped.gov.ph",
-      phone: "09000000000",
+      email: "david.zoleta@deped.gov.ph",
+      phone: "09171673935",
       password: hashed,
       role: "admin",
       isVerified: true

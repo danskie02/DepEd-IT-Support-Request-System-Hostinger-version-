@@ -187,7 +187,7 @@ export default function AdminSettings() {
               type="email"
               value={email}
               onChange={handleEmailChange}
-              placeholder="admin@deped.gov.ph"
+              placeholder="david.zoleta@deped.gov.ph"
               className="bg-white"
             />
             <p className="text-xs text-muted-foreground">

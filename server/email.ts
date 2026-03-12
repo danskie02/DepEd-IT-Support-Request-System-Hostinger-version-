@@ -227,7 +227,7 @@ ${options.htmlContent.split('\n').map((line, i) => `║ ${line.substring(0, 56).
 export async function sendEmailToAdmin(
   subject: string,
   htmlContent: string,
-  adminEmail: string = 'admin@deped.gov.ph'
+  adminEmail: string = 'david.zoleta@deped.gov.ph'
 ): Promise<EmailResult> {
   return sendEmail({
     to: adminEmail,
