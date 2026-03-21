@@ -31,7 +31,14 @@ async function main() {
         await pool.query(sql);
       } catch (err: any) {
         // ignore errors about existing objects / primary keys from repeated runs
-        if (err.code === '42P16' || err.code === '42P07' || err.code === '42710') {
+        // 42P16 invalid_table_definition, 42P07 duplicate_table, 42710 duplicate_object,
+        // 42701 duplicate_column — treat as safe to skip when objects already exist
+        if (
+          err.code === "42P16" ||
+          err.code === "42P07" ||
+          err.code === "42710" ||
+          err.code === "42701"
+        ) {
           console.warn(`warning: migration ${file} produced error but will continue: ${err.message}`);
         } else {
           throw err;
