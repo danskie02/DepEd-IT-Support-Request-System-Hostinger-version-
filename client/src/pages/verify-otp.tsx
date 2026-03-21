@@ -40,8 +40,8 @@ export default function VerifyOtpPage() {
       <div className="min-h-screen flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardContent className="pt-6 text-center">
-            <p className="text-red-500 mb-4">Invalid session. Please login again.</p>
-            <Button onClick={() => setLocation("/login")}>Go to Login</Button>
+            <p className="text-red-500 mb-4">Invalid session. Please submit a request again.</p>
+            <Button onClick={() => setLocation("/new-request")}>Go to Request Form</Button>
           </CardContent>
         </Card>
       </div>
@@ -71,9 +71,9 @@ export default function VerifyOtpPage() {
           <div className="mx-auto bg-yellow-100 w-16 h-16 rounded-full flex items-center justify-center mb-4 text-yellow-600">
             <ShieldCheck className="w-8 h-8" />
           </div>
-          <CardTitle className="text-2xl font-bold">Verify Identity</CardTitle>
+          <CardTitle className="text-2xl font-bold">Verify Your Identity</CardTitle>
           <CardDescription>
-            Enter the 6-digit code sent to your email and Telegram.
+            Enter the 6-digit code sent to your email and phone.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6 pt-4">
@@ -98,7 +98,7 @@ export default function VerifyOtpPage() {
               autoFocus
             />
             <p className="text-xs text-center text-muted-foreground">
-              Check your email and Telegram for the OTP code
+              Check your Email and SMS for the OTP code
             </p>
           </div>
           
@@ -116,6 +116,18 @@ export default function VerifyOtpPage() {
               "Verify Code"
             )}
           </Button>
+
+          <Button
+            type="button"
+            variant="ghost"
+            className="w-full text-muted-foreground"
+            onClick={() => setLocation("/new-request")}
+          >
+            Back to request form
+          </Button>
+          <p className="text-xs text-center text-muted-foreground">
+            If your code expired or your contact details were wrong, start again from the form — your previous attempt may need a new submission.
+          </p>
         </CardContent>
       </Card>
     </div>

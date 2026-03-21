@@ -29,6 +29,29 @@ export const api = {
         401: errorSchemas.unauthorized,
       },
     },
+    adminLogin: {
+      method: 'POST' as const,
+      path: '/api/auth/admin-login',
+      input: z.object({
+        email: z.string().email(),
+      }),
+      responses: {
+        200: z.object({ userId: z.number(), message: z.string() }),
+        401: errorSchemas.unauthorized,
+        403: z.object({ message: z.string() }),
+      },
+    },
+    userLogin: {
+      method: 'POST' as const,
+      path: '/api/auth/user-login',
+      input: z.object({
+        email: z.string().email(),
+      }),
+      responses: {
+        200: z.object({ userId: z.number(), message: z.string() }),
+        401: errorSchemas.unauthorized,
+      },
+    },
     verify: {
       method: 'POST' as const,
       path: '/api/auth/verify',
@@ -81,6 +104,18 @@ export const api = {
         400: errorSchemas.validation,
         401: errorSchemas.unauthorized,
         403: z.object({ message: z.string() }),
+      },
+    },
+    checkUser: {
+      method: 'POST' as const,
+      path: '/api/auth/check-user',
+      input: z.object({
+        email: z.string().email().optional(),
+        phone: z.string().optional(),
+      }),
+      responses: {
+        200: z.object({ exists: z.boolean() }),
+        400: errorSchemas.validation,
       },
     },
   },
@@ -205,3 +240,20 @@ export function buildUrl(path: string, params?: Record<string, string | number>)
   }
   return url;
 }
+
+// Input schemas for type inference
+const loginInputSchema = z.object({
+  identifier: z.string(),
+  password: z.string(),
+});
+
+const verifyInputSchema = z.object({
+  userId: z.number(),
+  code: z.string(),
+});
+
+// Type exports for client usage
+export type LoginRequest = z.infer<typeof loginInputSchema>;
+export type VerifyOtpRequest = z.infer<typeof verifyInputSchema>;
+export type CreateRequestPayload = z.infer<typeof insertRequestSchema>;
+export type UpdateRequestStatusPayload = z.infer<typeof api.requests.updateStatus.input>;

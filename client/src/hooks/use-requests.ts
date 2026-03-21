@@ -1,5 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api, buildUrl, type CreateRequestPayload, type UpdateRequestStatusPayload } from "@shared/routes";
+import { api, buildUrl, type UpdateRequestStatusPayload } from "@shared/routes";
+import type { CreateRequestPayload } from "@shared/routes";
+
+/** Server accepts insert fields plus optional `personalInfo` for guest submissions. */
+export type CreateRequestBody = CreateRequestPayload & {
+  personalInfo?: { name: string; email: string; phone: string; office: string };
+};
 import { useToast } from "@/hooks/use-toast";
 
 export function useRequests(autoRefresh = false) {
@@ -22,15 +28,19 @@ export function useCreateRequest() {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async (data: CreateRequestPayload) => {
+    mutationFn: async (data: CreateRequestBody) => {
       const res = await fetch(api.requests.create.path, {
         method: api.requests.create.method,
         headers: { "Content-Type": "application/json" },
         credentials: "include", // Include cookies for session
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error("Failed to create request");
-      return api.requests.create.responses[201].parse(await res.json());
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const msg = typeof body?.message === "string" ? body.message : "Failed to create request";
+        throw new Error(msg);
+      }
+      return api.requests.create.responses[201].parse(body);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.requests.list.path] });

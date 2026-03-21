@@ -131,6 +131,7 @@ export class DatabaseStorage implements IStorage {
       priority: requests.priority,
       status: requests.status,
       adminResponse: requests.adminResponse,
+      office: requests.office,
       createdAt: requests.createdAt,
       updatedAt: requests.updatedAt,
       user: users

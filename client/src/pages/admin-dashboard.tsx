@@ -7,10 +7,28 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Textarea } from "@/components/ui/textarea";
 import { StatusBadge, PriorityBadge } from "@/components/status-badge";
 import { formatLocalDate } from "@/lib/date-utils";
-import { Search, Filter, Eye, CheckCircle, XCircle, Loader2, Settings, Users } from "lucide-react";
+import { Search, Filter, Eye, CheckCircle, XCircle, Loader2, Settings, Users, AlertTriangle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+
+// Helper function to sort by priority
+function getPriorityOrder(priority: string): number {
+  const order = { urgent: 0, high: 1, medium: 2, low: 3 };
+  return order[priority as keyof typeof order] ?? 999;
+}
+
+// Helper function to calculate age in hours
+function getRequestAge(createdAt: string | Date): { hours: number; days: number; isAging: boolean; isAlertingAging: boolean } {
+  const created = new Date(createdAt);
+  const now = new Date();
+  const hours = Math.floor((now.getTime() - created.getTime()) / (1000 * 60 * 60));
+  const days = Math.floor(hours / 24);
+  const isAging = hours >= 24; // Aging after 24 hours
+  const isAlertingAging = hours >= 36; // High alert after 36 hours (12 hours before 48-hour deadline)
+  return { hours, days, isAging, isAlertingAging };
+}
 
 export default function AdminDashboard() {
   const [, navigate] = useLocation();
@@ -18,7 +36,7 @@ export default function AdminDashboard() {
   const { mutate: updateStatus, isPending: isUpdating } = useUpdateRequestStatus();
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("pending");
   const [selectedRequest, setSelectedRequest] = useState<any>(null);
   const [adminResponse, setAdminResponse] = useState("");
   const [reviewAction, setReviewAction] = useState<"approved" | "denied" | null>(null);
@@ -31,7 +49,19 @@ export default function AdminDashboard() {
     );
   }
 
-  const filteredRequests = (requests || []).filter(req => {
+  // Sort: priority first; within same priority, SLA-near (36h+) before fresher; then oldest first
+  const sortedRequests = [...(requests || [])].sort((a, b) => {
+    const priorityCompare = getPriorityOrder(a.priority) - getPriorityOrder(b.priority);
+    if (priorityCompare !== 0) return priorityCompare;
+    const ageA = getRequestAge(a.createdAt);
+    const ageB = getRequestAge(b.createdAt);
+    if (ageA.isAlertingAging !== ageB.isAlertingAging) {
+      return ageA.isAlertingAging ? -1 : 1;
+    }
+    return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+  });
+
+  const filteredRequests = sortedRequests.filter(req => {
     const matchesSearch =
       req.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       req.user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -133,8 +163,10 @@ export default function AdminDashboard() {
               <TableHead className="w-[80px] px-6 py-4">ID</TableHead>
               <TableHead className="px-6 py-4">User</TableHead>
               <TableHead className="px-6 py-4">Title</TableHead>
+              <TableHead className="px-6 py-4">Office</TableHead>
               <TableHead className="px-6 py-4">Category</TableHead>
               <TableHead className="px-6 py-4">Priority</TableHead>
+              <TableHead className="w-[100px] px-6 py-4">Age</TableHead>
               <TableHead className="w-[180px] px-6 py-4">Date & Time</TableHead>
               <TableHead className="px-6 py-4">Status</TableHead>
               <TableHead className="text-right px-6 py-4">Action</TableHead>
@@ -143,42 +175,59 @@ export default function AdminDashboard() {
           <TableBody>
             {filteredRequests.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-10 text-muted-foreground">
-                  No requests found matching your filters.
+                <TableCell colSpan={10} className="text-center py-10 text-muted-foreground">
+                  {statusFilter === "pending" ? "No pending requests." : "No requests found matching your filters."}
                 </TableCell>
               </TableRow>
             ) : (
-              filteredRequests.map((req) => (
-                <TableRow key={req.id} className="hover:bg-gray-50/50">
-                  <TableCell className="font-mono text-xs font-medium px-6 py-4">#{req.id}</TableCell>
-                  <TableCell className="px-6 py-4">
-                    <div className="flex flex-col gap-1">
-                      <span className="font-medium text-sm">{req.user.name}</span>
-                      <span className="text-xs text-muted-foreground">{req.user.email}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="font-medium px-6 py-4">{req.title}</TableCell>
-                  <TableCell className="px-6 py-4">{req.category}</TableCell>
-                  <TableCell className="px-6 py-4">
-                    <PriorityBadge priority={req.priority} />
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground whitespace-nowrap px-6 py-4">
-                    {formatLocalDate(req.createdAt, "MMM d, yyyy h:mm a")}
-                  </TableCell>
-                  <TableCell className="px-6 py-4">
-                    <StatusBadge status={req.status as any} />
-                  </TableCell>
-                  <TableCell className="text-right px-6 py-4">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setSelectedRequest(req)}
-                    >
-                      <Eye className="w-4 h-4 mr-1" /> Review
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))
+              filteredRequests.map((req) => {
+                const age = getRequestAge(req.createdAt);
+                const showAgingFlag = req.status === "pending" && age.isAlertingAging;
+                return (
+                  <TableRow key={req.id} className={showAgingFlag ? "bg-red-50 hover:bg-red-100/50" : "hover:bg-gray-50/50"}>
+                    <TableCell className="font-mono text-xs font-medium px-6 py-4">#{req.id}</TableCell>
+                    <TableCell className="px-6 py-4">
+                      <div className="flex flex-col gap-1">
+                        <span className="font-medium text-sm">{req.user.name}</span>
+                        <span className="text-xs text-muted-foreground">{req.user.email}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-medium px-6 py-4">{req.title}</TableCell>
+                    <TableCell className="px-6 py-4 text-sm">{req.office}</TableCell>
+                    <TableCell className="px-6 py-4">{req.category}</TableCell>
+                    <TableCell className="px-6 py-4">
+                      <PriorityBadge priority={req.priority} />
+                    </TableCell>
+                    <TableCell className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">
+                          {age.days > 0 ? `${age.days}d` : `${age.hours}h`}
+                        </span>
+                        {showAgingFlag && (
+                          <span title="Request nearing 48-hour deadline">
+                            <AlertTriangle className="w-4 h-4 text-red-600" />
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground whitespace-nowrap px-6 py-4">
+                      {formatLocalDate(req.createdAt, "MMM d, yyyy h:mm a")}
+                    </TableCell>
+                    <TableCell className="px-6 py-4">
+                      <StatusBadge status={req.status as any} />
+                    </TableCell>
+                    <TableCell className="text-right px-6 py-4">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSelectedRequest(req)}
+                      >
+                        <Eye className="w-4 h-4 mr-1" /> Review
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
         </Table>
@@ -209,6 +258,14 @@ export default function AdminDashboard() {
                 <div className="space-y-1">
                   <span className="text-muted-foreground">Date & Time</span>
                   <p className="font-medium">{formatLocalDate(selectedRequest.createdAt, "PPP 'at' h:mm a")}</p>
+                  <p className="text-xs text-muted-foreground">{(() => {
+                    const age = getRequestAge(selectedRequest.createdAt);
+                    return `${age.days > 0 ? `${age.days}d ` : ''}${age.hours % 24}h old`;
+                  })()}</p>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-muted-foreground">Office/Unit</span>
+                  <p className="font-medium">{selectedRequest.office}</p>
                 </div>
                 <div className="space-y-1">
                   <span className="text-muted-foreground">Category</span>

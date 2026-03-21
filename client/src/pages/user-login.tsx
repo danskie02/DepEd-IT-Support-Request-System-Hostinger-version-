@@ -4,32 +4,32 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Lock, Mail } from "lucide-react";
+import { Loader2, Mail, FileText } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 
-const adminLoginSchema = z.object({
+const userLoginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
 });
 
-type AdminLoginSchema = z.infer<typeof adminLoginSchema>;
+type UserLoginSchema = z.infer<typeof userLoginSchema>;
 
-export default function LoginPage() {
+export default function UserLoginPage() {
   const [, setLocation] = useLocation();
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  const form = useForm<AdminLoginSchema>({
-    resolver: zodResolver(adminLoginSchema),
+  const form = useForm<UserLoginSchema>({
+    resolver: zodResolver(userLoginSchema),
     defaultValues: { email: "" },
   });
 
-  async function onSubmit(values: AdminLoginSchema) {
+  async function onSubmit(values: UserLoginSchema) {
     setIsLoading(true);
     try {
-      const res = await fetch("/api/auth/admin-login", {
+      const res = await fetch("/api/auth/user-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -38,16 +38,10 @@ export default function LoginPage() {
 
       if (!res.ok) {
         const error = await res.json();
-        if (res.status === 403) {
-          toast({
-            title: "Access Denied",
-            description: "This login is for administrators only.",
-            variant: "destructive",
-          });
-        } else if (res.status === 401) {
+        if (res.status === 401) {
           toast({
             title: "Email Not Found",
-            description: "Please check your email and try again.",
+            description: error.message || "Please check your email or submit a new request.",
             variant: "destructive",
           });
         } else {
@@ -65,7 +59,7 @@ export default function LoginPage() {
         title: "Verification Code Sent",
         description: "Check your email and phone for the OTP code.",
       });
-      setLocation(`/verify-otp?userId=${data.userId}&adminLogin=true`);
+      setLocation(`/verify-otp?userId=${data.userId}&userLogin=true`);
     } catch (error) {
       toast({
         title: "Error",
@@ -92,19 +86,19 @@ export default function LoginPage() {
           />
           <div>
             <h1 className="text-3xl font-display font-bold text-primary">DepEd Marinduque IT Services</h1>
-            <p className="text-muted-foreground">Admin Access Portal</p>
+            <p className="text-muted-foreground">Check Your Request Status</p>
           </div>
         </div>
       </div>
 
-      <Card className="w-full max-w-md shadow-xl border-t-4 border-t-primary">
+      <Card className="w-full max-w-md shadow-xl border-t-4 border-t-blue-400">
         <CardHeader className="space-y-1">
           <div className="flex items-center gap-2">
-            <Lock className="w-6 h-6 text-primary" />
-            <CardTitle className="text-2xl font-bold">Admin Login</CardTitle>
+            <FileText className="w-6 h-6 text-blue-600" />
+            <CardTitle className="text-2xl font-bold">Access Your Requests</CardTitle>
           </div>
           <CardDescription>
-            Enter your email to receive a verification code
+            Enter the email you used to submit your request
           </CardDescription>
         </CardHeader>
 
@@ -123,7 +117,7 @@ export default function LoginPage() {
                     <FormControl>
                       <Input
                         type="email"
-                        placeholder="admin@deped.gov.ph"
+                        placeholder="your.email@deped.gov.ph"
                         {...field}
                         className="bg-white"
                         disabled={isLoading}
@@ -169,10 +163,10 @@ export default function LoginPage() {
             <Button
               variant="outline"
               className="flex-1"
-              onClick={() => setLocation("/user-login")}
+              onClick={() => setLocation("/login")}
               disabled={isLoading}
             >
-              User Login
+              Admin Login
             </Button>
           </div>
         </CardFooter>
@@ -180,10 +174,9 @@ export default function LoginPage() {
 
       {/* Info Banner */}
       <div className="mt-8 max-w-md text-center">
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <p className="text-sm text-blue-800">
-            <strong>Admin Only:</strong> This login is reserved for system administrators. 
-            Regular users should use the request form instead.
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+          <p className="text-sm text-green-800">
+            <strong>Returning User?</strong> Log in with the email you used to submit your request to check its status.
           </p>
         </div>
       </div>

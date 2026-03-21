@@ -103,6 +103,71 @@ export async function registerRoutes(
     }
   });
 
+  // Admin Login - OTP only, no password required
+  app.post(api.auth.adminLogin.path, async (req, res, next) => {
+    try {
+      const { email } = api.auth.adminLogin.input.parse(req.body);
+      const user = await storage.getUserByEmail(email);
+
+      if (!user) {
+        return res.status(401).json({ message: "Email not found" });
+      }
+
+      // Check if user is admin
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: "Only admins can access this login" });
+      }
+
+      // Generate OTP
+      const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+      await storage.createOtp(user.id, otpCode);
+
+      // Send OTP via Email and SMS
+      const emailResult = await sendOtpViaEmail(user.email, otpCode, user.name);
+      const smsResult = await sendOtpViaSms(user.phone, otpCode);
+
+      console.log(`[ADMIN OTP SENT] User: ${user.email}, Code: ${otpCode}`);
+      console.log(`[OTP CHANNELS] Email: ${emailResult.success ? 'Sent' : 'Failed'}, SMS: ${smsResult.success ? 'Sent' : 'Failed'}`);
+
+      res.json({
+        userId: user.id,
+        message: "OTP sent to your registered email and phone."
+      });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // User Login - OTP only, for regular users
+  app.post(api.auth.userLogin.path, async (req, res, next) => {
+    try {
+      const { email } = api.auth.userLogin.input.parse(req.body);
+      const user = await storage.getUserByEmail(email);
+
+      if (!user) {
+        return res.status(401).json({ message: "Email not found. Please submit a new request first." });
+      }
+
+      // Generate OTP
+      const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+      await storage.createOtp(user.id, otpCode);
+
+      // Send OTP via Email and SMS
+      const emailResult = await sendOtpViaEmail(user.email, otpCode, user.name);
+      const smsResult = await sendOtpViaSms(user.phone, otpCode);
+
+      console.log(`[USER OTP SENT] User: ${user.email}, Code: ${otpCode}`);
+      console.log(`[OTP CHANNELS] Email: ${emailResult.success ? 'Sent' : 'Failed'}, SMS: ${smsResult.success ? 'Sent' : 'Failed'}`);
+
+      res.json({
+        userId: user.id,
+        message: "OTP sent to your registered email and phone."
+      });
+    } catch (err) {
+      next(err);
+    }
+  });
+
   app.post(api.auth.verify.path, async (req, res, next) => {
     try {
       const { userId, code } = api.auth.verify.input.parse(req.body);
@@ -168,6 +233,31 @@ export async function registerRoutes(
     });
   });
 
+  // Check if user exists by email or phone (for the new request flow)
+  app.post(api.auth.checkUser.path, async (req, res, next) => {
+    try {
+      const { email, phone } = api.auth.checkUser.input.parse(req.body);
+
+      let exists = false;
+      if (email) {
+        const user = await storage.getUserByEmail(email);
+        if (user) exists = true;
+      }
+      if (phone && !exists) {
+        const users = await storage.getAllUsers();
+        exists = users.some((u) => u.phone === phone);
+      }
+
+      res.json({ exists });
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        res.status(400).json({ message: err.errors[0].message });
+      } else {
+        next(err);
+      }
+    }
+  });
+
   app.get(api.auth.me.path, (req, res) => {
     if (req.isAuthenticated()) {
       res.json(req.user);
@@ -189,36 +279,77 @@ export async function registerRoutes(
   });
 
   app.post(api.requests.create.path, async (req, res) => {
-    if (!req.isAuthenticated()) return res.status(401).send();
-
     try {
       const input = api.requests.create.input.parse(req.body);
-      // @ts-ignore
-      const request = await storage.createRequest(req.user.id, input);
 
-      // Send confirmation message to user's Telegram (optional)
-      // @ts-ignore
-      const user = req.user;
-      if (user?.telegramChatId) {
-        // DISABLED: Telegram notifications are suspended
-        // const message = `📝 <b>Request Submitted Successfully</b>\n\n` +
-        //   `<b>Request ID:</b> #${request.id}\n` +
-        //   `<b>Title:</b> ${request.title}\n` +
-        //   `<b>Status:</b> <code>Pending</code>\n\n` +
-        //   `Your request has been received and is awaiting admin review.\n\n` +
-        //   `📱 <b>Track your request:</b>\n` +
-        //   `<a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/requests/${request.id}">View Request</a>\n\n` +
-        //   `We'll notify you when there's an update! 🎓`;
-        // 
-        // if (user?.telegramChatId) {
-        //   await sendTelegramMessage(user.telegramChatId, message);
-        //   console.log(`[REQUEST CREATED - TELEGRAM CONFIRMATION] Request #${request.id}, User: ${user.name}`);
-        // }
+      // Support both authenticated users and unauthenticated users with personal info
+      let userId: number;
+      let user: any;
+
+      if (req.isAuthenticated()) {
+        // @ts-ignore
+        userId = req.user.id;
+        // @ts-ignore
+        user = req.user;
+      } else {
+        // Unauthenticated request - check if personal info is provided
+        const personalInfo = (req.body as any).personalInfo;
+        if (!personalInfo || !personalInfo.email || !personalInfo.phone || !personalInfo.name) {
+          return res.status(400).json({ message: "Personal information required for unauthenticated requests" });
+        }
+
+        // Check if user exists by email
+        let existingUser = await storage.getUserByEmail(personalInfo.email);
+        
+        if (!existingUser) {
+          // Create a new user with the provided personal info
+          const hashedPassword = await hashPassword(Math.random().toString()); // Random password for auto-generated users
+          existingUser = await storage.createUser({
+            name: personalInfo.name,
+            email: personalInfo.email,
+            phone: personalInfo.phone,
+            username: personalInfo.email, // Use email as username
+            password: hashedPassword,
+            role: "user",
+          });
+        }
+
+        userId = existingUser.id;
+        user = existingUser;
+      }
+
+      const request = await storage.createRequest(userId, input);
+
+      // For unauthenticated users, generate and send OTP before returning
+      if (!req.isAuthenticated()) {
+        const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+        await storage.createOtp(userId, otpCode);
+
+        // Send OTP via Email and SMS
+        const emailResult = await sendOtpViaEmail(user!.email, otpCode, user!.name);
+        const smsResult = await sendOtpViaSms(user!.phone, otpCode);
+
+        console.log(`[OTP SENT - NEW REQUEST] User: ${user!.email}, Code: ${otpCode}`);
+        console.log(`[OTP CHANNELS] Email: ${emailResult.success ? 'Sent' : 'Failed'}, SMS: ${smsResult.success ? 'Sent' : 'Failed'}`);
+
+        try {
+          await notifyAdminsOfNewRequest(request, user?.name, { pendingOtp: true });
+          console.log(`[ADMIN SMS] new request (pending OTP) notification sent for #${request.id}`);
+        } catch (e) {
+          console.error(`[ADMIN SMS] failed to notify for request #${request.id}`, e);
+        }
+
+        // Return userId so client can redirect to OTP verification
+        return res.status(201).json({
+          requestId: request.id,
+          userId: userId,
+          message: "Request submitted! Please verify your identity with the OTP sent to your email and phone."
+        });
       }
 
       // notify admins by SMS
       try {
-        await notifyAdminsOfNewRequest(request, (user as any)?.name);
+        await notifyAdminsOfNewRequest(request, user?.name);
         console.log(`[ADMIN SMS] new request notification sent for #${request.id}`);
       } catch (e) {
         console.error(`[ADMIN SMS] failed to notify for request #${request.id}`, e);
@@ -632,15 +763,16 @@ export async function registerRoutes(
   const adminUser = await storage.getUserByUsername("admin");
   if (!adminUser) {
     const hashed = await hashPassword("admin123");
-    await storage.createUser({
+    const newAdmin = await storage.createUser({
       username: "admin",
       name: "System Administrator",
       email: "david.zoleta@deped.gov.ph",
       phone: "09171673935",
       password: hashed,
       role: "admin",
-      isVerified: true
     });
+    // Mark admin as verified
+    await storage.updateUserVerified(newAdmin.id, true);
     console.log("Seeded admin user (admin/admin123)");
   }
 

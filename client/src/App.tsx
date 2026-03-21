@@ -7,7 +7,7 @@ import { useAuth } from "@/hooks/use-auth";
 
 // Pages
 import LoginPage from "@/pages/login";
-import RegisterPage from "@/pages/register";
+import UserLoginPage from "@/pages/user-login";
 import VerifyOtpPage from "@/pages/verify-otp";
 import Dashboard from "@/pages/dashboard";
 import NewRequestPage from "@/pages/new-request";
@@ -50,17 +50,17 @@ function PrivateRoute({ component: Component, adminOnly = false }: { component: 
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={() => <Redirect to="/login" />} />
+      <Route path="/" component={() => <Redirect to="/new-request" />} />
       <Route path="/login" component={LoginPage} />
-      <Route path="/register" component={RegisterPage} />
+      <Route path="/user-login" component={UserLoginPage} />
       <Route path="/verify-otp" component={VerifyOtpPage} />
+      
+      {/* Public Routes - Accessible without authentication */}
+      <Route path="/new-request" component={NewRequestPage} />
       
       {/* Protected User Routes */}
       <Route path="/dashboard">
         <PrivateRoute component={Dashboard} />
-      </Route>
-      <Route path="/new-request">
-        <PrivateRoute component={NewRequestPage} />
       </Route>
       <Route path="/request/:id">
         <PrivateRoute component={RequestStatusPage} />

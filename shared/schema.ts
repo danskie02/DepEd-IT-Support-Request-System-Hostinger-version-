@@ -28,6 +28,7 @@ export const requests = pgTable("requests", {
   description: text("description").notNull(),
   category: text("category").notNull(), // e.g., Hardware, Software, Network
   priority: text("priority").default("medium").notNull(),
+  office: text("office").notNull(), // e.g., HR, SDS, ASDS, SGOD, CID, Medical Unit, Legal Unit, Accounting Unit
   status: requestStatusEnum("status").default("pending").notNull(),
   adminResponse: text("admin_response"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
