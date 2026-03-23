@@ -179,7 +179,7 @@ export async function notifyUserRequestUpdate(
   telegramChatId: string | number | undefined,
   requestId: number,
   requestTitle: string,
-  newStatus: 'approved' | 'denied' | 'pending',
+  newStatus: 'pending' | 'on_going' | 'finished',
   adminResponse?: string,
   userName?: string
 ): Promise<boolean> {
@@ -198,14 +198,14 @@ export async function notifyUserRequestUpdate(
     let statusText = 'Pending';
     let statusColor = 'yellow';
 
-    if (newStatus === 'approved') {
+    if (newStatus === 'finished') {
       statusEmoji = '✅';
-      statusText = 'Approved';
+      statusText = 'Finished';
       statusColor = 'green';
-    } else if (newStatus === 'denied') {
-      statusEmoji = '❌';
-      statusText = 'Denied';
-      statusColor = 'red';
+    } else if (newStatus === 'on_going') {
+      statusEmoji = '🛠️';
+      statusText = 'On-Going';
+      statusColor = 'blue';
     }
 
     // Build the notification message
@@ -245,7 +245,7 @@ export async function notifyUserRequestUpdateSms(
   userId: number | undefined,
   requestId: number,
   requestTitle: string,
-  newStatus: 'approved' | 'denied' | 'pending',
+  newStatus: 'pending' | 'on_going' | 'finished',
   adminResponse?: string,
 ): Promise<boolean> {
   const phone = (phoneNumber || "").trim();
@@ -253,6 +253,46 @@ export async function notifyUserRequestUpdateSms(
 
   // sendRequestStatusSms will queue if SMS_MODE=pull
   const result = await sendRequestStatusSms(phone, requestId, requestTitle, newStatus, adminResponse);
+  return result.success;
+}
+
+export async function sendFinishedSurveyEmail(
+  email: string | undefined,
+  userName: string | undefined,
+  requestId: number,
+  requestTitle: string,
+): Promise<boolean> {
+  const to = (email || "").trim();
+  if (!to) return false;
+
+  const surveyUrl =
+    "https://forms.office.com/Pages/ResponsePage.aspx?id=gKvjQCQgo0W_dnoHYaJNKfX6mizlSOtEuBUUaobYm6pUM1hLWk9HU01EQzQ4MFQxTkxaNVYxSjdGSy4u&fbclid=IwY2xjawQuj8ZleHRuA2FlbQIxMQBzcnRjBmFwcF9pZAEwAAEe_BtbxRkZWDu6m7lyEBqJFigZAQZIALRhXTB8eVLTcf62UPT63EhrjYDT4zE_aem_JKSqla9L3RAz5d1NmMao_A";
+
+  const htmlContent = `
+    <html>
+      <body style="font-family: Arial, sans-serif; color:#1f2937; line-height:1.55;">
+        <h2 style="color:#1d4ed8; margin-bottom:8px;">DepEd Marinduque IT Services</h2>
+        <p>Hello ${userName || "Client"},</p>
+        <p>
+          Thank you for using our IT Service Request System.
+          Your request <strong>#${requestId} - ${requestTitle}</strong> has been marked as <strong>Finished</strong>.
+        </p>
+        <p>
+          To help us improve the quality of our service, may we kindly ask you to answer our client satisfaction survey:
+        </p>
+        <p>
+          <a href="${surveyUrl}" target="_blank" rel="noopener noreferrer">Open Client Satisfaction Survey</a>
+        </p>
+        <p>Thank you and have a great day.</p>
+      </body>
+    </html>
+  `;
+
+  const result = await sendEmail({
+    to,
+    subject: "DepEd IT Services - Thank You and Client Satisfaction Survey",
+    htmlContent,
+  });
   return result.success;
 }
 

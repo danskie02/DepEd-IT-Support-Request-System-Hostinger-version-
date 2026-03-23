@@ -3,7 +3,7 @@ import { useRequest } from "@/hooks/use-requests";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { StatusBadge, PriorityBadge } from "@/components/status-badge";
-import { ArrowLeft, Calendar, AlertCircle, FileText, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { ArrowLeft, Calendar, AlertCircle, FileText, CheckCircle2, Wrench, Loader2 } from "lucide-react";
 import { formatLocalDate } from "@/lib/date-utils";
 
 export default function RequestStatusPage() {
@@ -47,10 +47,10 @@ export default function RequestStatusPage() {
 
     const getStatusIcon = () => {
         switch (request.status) {
-            case "approved":
+            case "finished":
                 return <CheckCircle2 className="w-6 h-6 text-green-600" />;
-            case "denied":
-                return <XCircle className="w-6 h-6 text-red-600" />;
+            case "on_going":
+                return <Wrench className="w-6 h-6 text-blue-600" />;
             default:
                 return <AlertCircle className="w-6 h-6 text-yellow-600" />;
         }
@@ -132,18 +132,26 @@ export default function RequestStatusPage() {
                     {request.adminResponse && (
                         <div className="space-y-2 pt-4 border-t">
                             <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                                {request.status === "approved" ? (
+                                {request.status === "finished" ? (
                                     <CheckCircle2 className="w-5 h-5 text-green-600" />
+                                ) : request.status === "on_going" ? (
+                                    <Wrench className="w-5 h-5 text-blue-600" />
                                 ) : (
-                                    <XCircle className="w-5 h-5 text-red-600" />
+                                    <AlertCircle className="w-5 h-5 text-yellow-600" />
                                 )}
-                                Administrative Response
+                                Admin Remarks
                             </h3>
-                            <div className={`p-4 rounded-lg border-2 ${request.status === "approved"
+                            <div className={`p-4 rounded-lg border-2 ${request.status === "finished"
                                     ? "bg-green-50 border-green-200"
-                                    : "bg-red-50 border-red-200"
+                                    : request.status === "on_going"
+                                    ? "bg-blue-50 border-blue-200"
+                                    : "bg-yellow-50 border-yellow-200"
                                 }`}>
-                                <p className={`leading-relaxed whitespace-pre-wrap ${request.status === "approved" ? "text-green-900" : "text-red-900"
+                                <p className={`leading-relaxed whitespace-pre-wrap ${request.status === "finished"
+                                        ? "text-green-900"
+                                        : request.status === "on_going"
+                                        ? "text-blue-900"
+                                        : "text-yellow-900"
                                     }`}>
                                     {request.adminResponse}
                                 </p>
@@ -162,7 +170,7 @@ export default function RequestStatusPage() {
                             <div className="flex-1">
                                 <p className="text-sm font-medium text-yellow-900 mb-1">Under Review</p>
                                 <p className="text-sm text-yellow-700">
-                                    Your request is currently being reviewed by an administrator. You will be notified once a decision has been made.
+                                    Your request is currently being reviewed by an administrator. You will be notified once work starts and once it is finished.
                                 </p>
                             </div>
                         </div>

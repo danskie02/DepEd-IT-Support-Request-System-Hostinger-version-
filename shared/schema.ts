@@ -5,7 +5,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 export const userRoleEnum = pgEnum("user_role", ["admin", "user"]);
-export const requestStatusEnum = pgEnum("request_status", ["pending", "approved", "denied"]);
+export const requestStatusEnum = pgEnum("request_status", ["pending", "on_going", "finished"]);
 export const smsJobStatusEnum = pgEnum("sms_job_status", ["pending", "sending", "sent", "failed"]);
 
 export const users = pgTable("users", {
@@ -84,4 +84,4 @@ export type InsertRequest = z.infer<typeof insertRequestSchema>;
 export type LoginRequest = { identifier: string; password: string }; // username or email
 export type VerifyOtpRequest = { userId: number; code: string };
 export type CreateRequestPayload = InsertRequest;
-export type UpdateRequestStatusPayload = { status: "approved" | "denied"; adminResponse?: string };
+export type UpdateRequestStatusPayload = { status: "on_going" | "finished"; adminResponse?: string };

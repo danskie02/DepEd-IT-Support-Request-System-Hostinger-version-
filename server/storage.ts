@@ -33,7 +33,7 @@ export interface IStorage {
   getRequests(userId?: number): Promise<(Request & { user: User })[]>; // Optional userId filter
   getRequest(id: number): Promise<Request | undefined>;
   createRequest(userId: number, request: CreateRequestPayload): Promise<Request>;
-  updateRequestStatus(id: number, status: "approved" | "denied", response?: string): Promise<Request | undefined>;
+  updateRequestStatus(id: number, status: "on_going" | "finished", response?: string): Promise<Request | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -158,7 +158,7 @@ export class DatabaseStorage implements IStorage {
     return newReq;
   }
 
-  async updateRequestStatus(id: number, status: "approved" | "denied", response?: string): Promise<Request | undefined> {
+  async updateRequestStatus(id: number, status: "on_going" | "finished", response?: string): Promise<Request | undefined> {
     const [updated] = await db.update(requests)
       .set({ status, adminResponse: response, updatedAt: new Date() })
       .where(eq(requests.id, id))

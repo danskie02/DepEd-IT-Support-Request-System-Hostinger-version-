@@ -1,23 +1,23 @@
 import { cn } from "@/lib/utils";
 
-export function StatusBadge({ status }: { status: "pending" | "approved" | "denied" }) {
-  const statusLower = status.toLowerCase() as "pending" | "approved" | "denied";
+export function StatusBadge({ status }: { status: "pending" | "on_going" | "finished" }) {
+  const statusLower = status.toLowerCase() as "pending" | "on_going" | "finished";
 
   const styles = {
     pending: "bg-yellow-100 text-yellow-800 border-yellow-200",
-    approved: "bg-green-100 text-green-800 border-green-200",
-    denied: "bg-red-100 text-red-800 border-red-200",
+    on_going: "bg-blue-100 text-blue-800 border-blue-200",
+    finished: "bg-green-100 text-green-800 border-green-200",
   };
 
   const labels = {
     pending: "Pending",
-    approved: "Approved",
-    denied: "Denied",
+    on_going: "On-Going",
+    finished: "Finished",
   };
 
   return (
     <span className={cn(
-      "px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border",
+      "px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border whitespace-nowrap inline-flex items-center",
       styles[statusLower]
     )}>
       {labels[statusLower]}

@@ -148,7 +148,7 @@ export const api = {
       method: 'PATCH' as const,
       path: '/api/requests/:id/status',
       input: z.object({
-        status: z.enum(["approved", "denied"]),
+        status: z.enum(["on_going", "finished"]),
         adminResponse: z.string().optional(),
       }),
       responses: {

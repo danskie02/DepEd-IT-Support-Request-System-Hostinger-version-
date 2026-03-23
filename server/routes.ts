@@ -15,7 +15,7 @@ import { promisify } from "util";
 // DISABLED: Telegram service is temporarily suspended
 // import { sendOtpViaMultipleChannels, sendTelegramMessage, notifyUserRequestUpdate, notifyUserRequestUpdateSms } from "./telegram";
 // Using email and SMS only
-import { sendOtpViaEmail, notifyUserRequestUpdateSms } from "./telegram";
+import { sendOtpViaEmail, notifyUserRequestUpdateSms, sendFinishedSurveyEmail } from "./telegram";
 import { notifyAdminsOfNewRequest } from "./adminNotifier";
 import { sendOtpViaSms } from "./sms";
 
@@ -416,10 +416,15 @@ export async function registerRoutes(
           user.id,
           updated.id,
           updated.title,
-          status as 'approved' | 'denied' | 'pending',
+          status as 'pending' | 'on_going' | 'finished',
           adminResponse,
         );
         console.log(`[REQUEST UPDATE - SMS] ${smsOk ? 'Sent' : 'Skipped/Failed'} for Request #${updated.id}`);
+      }
+
+      if (status === "finished" && user?.email) {
+        const emailOk = await sendFinishedSurveyEmail(user.email, user.name, updated.id, updated.title);
+        console.log(`[REQUEST UPDATE - EMAIL SURVEY] ${emailOk ? "Sent" : "Skipped/Failed"} for Request #${updated.id}`);
       }
 
       console.log(`[REQUEST STATUS UPDATED] Request #${updated.id} by admin, Status: ${status}, User: ${user?.name}`);

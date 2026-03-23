@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Textarea } from "@/components/ui/textarea";
 import { StatusBadge, PriorityBadge } from "@/components/status-badge";
 import { formatLocalDate } from "@/lib/date-utils";
-import { Search, Filter, Eye, CheckCircle, XCircle, Loader2, Settings, Users, AlertTriangle } from "lucide-react";
+import { Search, Filter, Eye, CheckCircle, Loader2, Settings, Users, AlertTriangle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
@@ -39,7 +39,7 @@ export default function AdminDashboard() {
   const [statusFilter, setStatusFilter] = useState("pending");
   const [selectedRequest, setSelectedRequest] = useState<any>(null);
   const [adminResponse, setAdminResponse] = useState("");
-  const [reviewAction, setReviewAction] = useState<"approved" | "denied" | null>(null);
+  const [reviewAction, setReviewAction] = useState<"on_going" | "finished" | null>(null);
 
   if (isLoading) {
     return (
@@ -147,8 +147,8 @@ export default function AdminDashboard() {
               <SelectContent>
                 <SelectItem value="all">All Status</SelectItem>
                 <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="approved">Approved</SelectItem>
-                <SelectItem value="denied">Denied</SelectItem>
+                <SelectItem value="on_going">On-Going</SelectItem>
+                <SelectItem value="finished">Finished</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -168,7 +168,7 @@ export default function AdminDashboard() {
               <TableHead className="px-6 py-4">Priority</TableHead>
               <TableHead className="w-[100px] px-6 py-4">Age</TableHead>
               <TableHead className="w-[180px] px-6 py-4">Date & Time</TableHead>
-              <TableHead className="px-6 py-4">Status</TableHead>
+              <TableHead className="w-[140px] px-6 py-4">Status</TableHead>
               <TableHead className="text-right px-6 py-4">Action</TableHead>
             </TableRow>
           </TableHeader>
@@ -213,7 +213,7 @@ export default function AdminDashboard() {
                     <TableCell className="text-sm text-muted-foreground whitespace-nowrap px-6 py-4">
                       {formatLocalDate(req.createdAt, "MMM d, yyyy h:mm a")}
                     </TableCell>
-                    <TableCell className="px-6 py-4">
+                    <TableCell className="px-6 py-4 whitespace-nowrap">
                       <StatusBadge status={req.status as any} />
                     </TableCell>
                     <TableCell className="text-right px-6 py-4">
@@ -286,32 +286,32 @@ export default function AdminDashboard() {
               <div className="space-y-4 pt-4 border-t">
                 <h4 className="font-semibold text-sm">Admin Action</h4>
 
-                {selectedRequest.status === "pending" ? (
+                {selectedRequest.status === "pending" || selectedRequest.status === "on_going" ? (
                   <>
                     <Textarea
-                      placeholder="Add a note or reason for your decision..."
+                      placeholder="Add remarks for the client..."
                       value={adminResponse}
                       onChange={(e) => setAdminResponse(e.target.value)}
                       className="min-h-[100px]"
                     />
                     <div className="flex gap-3">
                       <Button
-                        className="flex-1 bg-green-600 hover:bg-green-700"
-                        onClick={() => { setReviewAction("approved"); }}
-                        disabled={reviewAction === "approved"}
-                        variant={reviewAction === "approved" ? "secondary" : "default"}
+                        className="flex-1 bg-blue-600 hover:bg-blue-700"
+                        onClick={() => { setReviewAction("on_going"); }}
+                        disabled={reviewAction === "on_going"}
+                        variant={reviewAction === "on_going" ? "secondary" : "default"}
                       >
                         <CheckCircle className="w-4 h-4 mr-2" />
-                        Approve Request
+                        Mark On-Going
                       </Button>
                       <Button
-                        className="flex-1"
-                        variant={reviewAction === "denied" ? "secondary" : "destructive"}
-                        onClick={() => { setReviewAction("denied"); }}
-                        disabled={reviewAction === "denied"}
+                        className="flex-1 bg-green-600 hover:bg-green-700"
+                        onClick={() => { setReviewAction("finished"); }}
+                        disabled={reviewAction === "finished"}
+                        variant={reviewAction === "finished" ? "secondary" : "default"}
                       >
-                        <XCircle className="w-4 h-4 mr-2" />
-                        Deny Request
+                        <CheckCircle className="w-4 h-4 mr-2" />
+                        Mark Finished
                       </Button>
                     </div>
 

@@ -163,7 +163,7 @@ export async function sendRequestStatusSms(
   phoneNumber: string,
   requestId: number,
   requestTitle: string,
-  status: "approved" | "denied" | "pending",
+  status: "pending" | "on_going" | "finished",
   adminResponse?: string,
 ): Promise<SmsSendResult> {
   const phone = (phoneNumber || "").trim();
@@ -173,7 +173,7 @@ export async function sendRequestStatusSms(
 
   const brand = process.env.BRAND_NAME || "DepEd Marinduque IT Services";
   const statusText =
-    status === "approved" ? "APPROVED" : status === "denied" ? "DENIED" : "PENDING";
+    status === "finished" ? "FINISHED" : status === "on_going" ? "ON-GOING" : "PENDING";
 
   const parts = [
     `${brand} update: Request #${requestId} is ${statusText}.`,
