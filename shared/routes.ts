@@ -118,6 +118,18 @@ export const api = {
         400: errorSchemas.validation,
       },
     },
+    contactInfo: {
+      method: 'GET' as const,
+      path: '/api/auth/contact-info/:userId',
+      responses: {
+        200: z.object({
+          email: z.string(),
+          phone: z.string(),
+          name: z.string(),
+        }),
+        404: errorSchemas.notFound,
+      },
+    },
   },
   requests: {
     list: {

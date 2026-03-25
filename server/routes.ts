@@ -258,6 +258,29 @@ export async function registerRoutes(
     }
   });
 
+  // Get user contact info without authentication (for OTP verification page)
+  app.get('/api/auth/contact-info/:userId', async (req, res, next) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) {
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      res.json({
+        email: user.email,
+        phone: user.phone,
+        name: user.name,
+      });
+    } catch (err) {
+      next(err);
+    }
+  });
+
   app.get(api.auth.me.path, (req, res) => {
     if (req.isAuthenticated()) {
       res.json(req.user);

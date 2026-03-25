@@ -7,15 +7,43 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, ShieldCheck, AlertCircle } from "lucide-react";
 
+interface UserContactInfo {
+  email: string;
+  phone: string;
+  name: string;
+}
+
 export default function VerifyOtpPage() {
   const [, setLocation] = useLocation();
   const { verifyOtp, isVerifying, user } = useAuth();
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [contactInfo, setContactInfo] = useState<UserContactInfo | null>(null);
+  const [isLoadingContact, setIsLoadingContact] = useState(false);
 
   // Extract userId from query params
   const params = new URLSearchParams(window.location.search);
   const userId = params.get("userId");
+
+  // Fetch user contact info when component loads
+  useEffect(() => {
+    if (userId) {
+      setIsLoadingContact(true);
+      fetch(`/api/auth/contact-info/${userId}`)
+        .then((res) => {
+          if (res.ok) {
+            return res.json();
+          }
+          throw new Error("Failed to fetch contact info");
+        })
+        .then((data) => setContactInfo(data))
+        .catch((err) => {
+          console.error("Error fetching contact info:", err);
+          // Don't show error to user, just continue
+        })
+        .finally(() => setIsLoadingContact(false));
+    }
+  }, [userId]);
 
   // If user is already verified and logged in, redirect them
   useEffect(() => {
@@ -64,6 +92,20 @@ export default function VerifyOtpPage() {
     );
   };
 
+  // Format phone number for display (mask middle digits if desired)
+  const formatPhoneForDisplay = (phone: string) => {
+    // Remove non-digits for phone formatting
+    const cleaned = phone.replace(/\D/g, '');
+    if (cleaned.length === 11) {
+      // Format as 09XX XXX XXXX
+      return `${cleaned.substring(0, 4)} ${cleaned.substring(4, 7)} ${cleaned.substring(7)}`;
+    } else if (cleaned.length === 10) {
+      // Format as 9XX XXX XXXX
+      return `${cleaned.substring(0, 3)} ${cleaned.substring(3, 6)} ${cleaned.substring(6)}`;
+    }
+    return phone;
+  };
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
       <Card className="w-full max-w-md shadow-xl border-t-4 border-t-yellow-400">
@@ -72,8 +114,16 @@ export default function VerifyOtpPage() {
             <ShieldCheck className="w-8 h-8" />
           </div>
           <CardTitle className="text-2xl font-bold">Verify Your Identity</CardTitle>
-          <CardDescription>
-            Enter the 6-digit code sent to your email and phone.
+          <CardDescription className="mt-2">
+            {isLoadingContact ? (
+              <span className="text-muted-foreground">Loading contact information...</span>
+            ) : contactInfo ? (
+              <span className="text-sm">
+                Check your Email: <strong>{contactInfo.email}</strong> and SMS: <strong>{formatPhoneForDisplay(contactInfo.phone)}</strong> for the OTP code
+              </span>
+            ) : (
+              <span>Enter the 6-digit code sent to your email and phone.</span>
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6 pt-4">
@@ -98,7 +148,7 @@ export default function VerifyOtpPage() {
               autoFocus
             />
             <p className="text-xs text-center text-muted-foreground">
-              Check your Email and SMS for the OTP code
+              Enter the 6-digit verification code
             </p>
           </div>
           
