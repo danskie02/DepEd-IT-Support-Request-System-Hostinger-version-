@@ -85,11 +85,22 @@ async function sendViaSendGrid(options: EmailOptions, fromEmail: string): Promis
       message: `Email sent to ${options.to}`,
       messageId: response[0].headers['x-message-id'],
     };
-  } catch (error) {
-    console.error('[SENDGRID EMAIL ERROR]', error);
+  } catch (error: unknown) {
+    const sg = error as {
+      response?: { body?: { errors?: Array<{ message?: string; field?: string }> } };
+      code?: number;
+    };
+    const details = sg?.response?.body?.errors?.length
+      ? sg.response.body.errors.map((e) => e.message || JSON.stringify(e)).join(" | ")
+      : undefined;
+    console.error("[SENDGRID EMAIL ERROR]", error);
+    if (details) {
+      console.error("[SENDGRID EMAIL ERROR] details:", details);
+    }
+    const msg = error instanceof Error ? error.message : "Unknown error";
     return {
       success: false,
-      message: `Failed to send email via SendGrid: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      message: `Failed to send email via SendGrid: ${details || msg}`,
     };
   }
 }
