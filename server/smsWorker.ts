@@ -68,9 +68,12 @@ export async function startSmsWorker(pollInterval = 5000) {
 }
 
 // When run directly from the command line we still want the old behavior
-// so `npm run worker` continues to work.  The check below makes sure the
-// module isn't just being *imported* by another script.
-if (import.meta.url === `file://${process.argv[1]}`) {
+// so `npm run worker` continues to work.
+//
+// Note: we avoid `import.meta.url` because this file is bundled to CJS
+// (`*.cjs`) for production, and `import.meta` isn't available there.
+const argv1 = (process.argv[1] || "").toLowerCase();
+if (argv1.includes("smsworker")) {
   startSmsWorker().catch((e) => {
     console.error(e);
     process.exit(1);

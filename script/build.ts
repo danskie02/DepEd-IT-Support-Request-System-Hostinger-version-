@@ -80,6 +80,7 @@ async function buildAll() {
   // so we mirror it into `build/` for easier deployment.
   await rm("build", { recursive: true, force: true }).catch(() => {});
   await cp("dist", "build", { recursive: true });
+  console.log("[BUILD] mirrored dist/ -> build/ for Hostinger deployment");
 }
 
 buildAll().catch((err) => {
