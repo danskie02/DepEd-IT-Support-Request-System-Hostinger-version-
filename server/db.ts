@@ -22,19 +22,53 @@ if (!process.env.DATABASE_URL) {
 }
 
 // Trim whitespace and log the connection string (without password) for debugging
-const dbUrl = process.env.DATABASE_URL.trim();
-const maskedUrl = dbUrl.replace(/:[^:@]+@/, ':****@');
+const rawUrl = process.env.DATABASE_URL.trim();
+
+/**
+ * Supabase transaction pooler (PgBouncer) cannot use prepared statements across
+ * transactions. node-postgres must use simple-query mode: add `pgbouncer=true`
+ * to the connection string (see Supabase "Connect to Postgres" docs).
+ */
+function normalizeDatabaseUrl(url: string): string {
+  let u: URL;
+  try {
+    u = new URL(url);
+  } catch {
+    return url;
+  }
+  const host = u.hostname.toLowerCase();
+  const port = u.port || (u.protocol === "postgresql:" || u.protocol === "postgres:" ? "5432" : "");
+  const isSupabasePooler =
+    host.includes("pooler.supabase.com") || host.includes("pooler.supabase.co");
+  const isTransactionPooler = port === "6543";
+  if ((isSupabasePooler && isTransactionPooler) || process.env.PG_USE_POOLER === "true") {
+    if (!u.searchParams.has("pgbouncer")) {
+      u.searchParams.set("pgbouncer", "true");
+    }
+  }
+  return u.toString();
+}
+
+const dbUrl = normalizeDatabaseUrl(rawUrl);
+const maskedUrl = dbUrl.replace(/:[^:@]+@/, ":****@");
 console.log(`[DB] Connecting to: ${maskedUrl}`);
 
 // Validate URL format
 try {
   const testUrl = new URL(dbUrl);
-  if (testUrl.protocol !== 'postgresql:' && testUrl.protocol !== 'postgres:') {
+  if (testUrl.protocol !== "postgresql:" && testUrl.protocol !== "postgres:") {
     throw new Error(`Invalid database protocol: ${testUrl.protocol}. Expected postgresql: or postgres:`);
   }
 } catch (err: any) {
   throw new Error(`Invalid DATABASE_URL format: ${err.message}`);
 }
 
-export const pool = new Pool({ connectionString: dbUrl });
+const poolMax =
+  Number(process.env.PG_POOL_MAX) ||
+  (process.env.NODE_ENV === "production" ? 5 : 1);
+
+export const pool = new Pool({
+  connectionString: dbUrl,
+  max: poolMax,
+});
 export const db = drizzle(pool, { schema });
