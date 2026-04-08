@@ -446,7 +446,7 @@ export async function registerRoutes(
       }
 
       if (status === "finished" && user?.email) {
-        const emailOk = await sendFinishedSurveyEmail(user.email, user.name, updated.id, updated.title);
+        const emailOk = await sendFinishedSurveyEmail(user.email, user.name, updated.id, updated.title, updated.adminResponse);
         console.log(`[REQUEST UPDATE - EMAIL SURVEY] ${emailOk ? "Sent" : "Skipped/Failed"} for Request #${updated.id}`);
       }
 

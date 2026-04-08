@@ -19,6 +19,14 @@ interface EmailResult {
   messageId?: string;
 }
 
+function extractEmailAddress(fromValue: string): string {
+  // Supports formats like:
+  // - "Display Name <user@domain.com>"
+  // - "user@domain.com"
+  const match = fromValue.match(/<([^>]+)>/);
+  return (match?.[1] || fromValue).trim();
+}
+
 /**
  * Send email using the configured email service
  */
@@ -68,12 +76,15 @@ async function sendViaSendGrid(options: EmailOptions, fromEmail: string): Promis
 
     sgMail.default.setApiKey(apiKey);
 
+    const fromAddress = extractEmailAddress(fromEmail);
+    const replyToAddress = extractEmailAddress(options.replyTo || fromEmail);
+
     const msg = {
       to: options.to,
-      from: fromEmail,
+      from: fromAddress,
       subject: options.subject,
       html: options.htmlContent,
-      replyTo: options.replyTo || fromEmail,
+      replyTo: replyToAddress,
     };
 
     const response = await sgMail.default.send(msg);

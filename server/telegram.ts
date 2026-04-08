@@ -261,12 +261,20 @@ export async function sendFinishedSurveyEmail(
   userName: string | undefined,
   requestId: number,
   requestTitle: string,
+  adminRemarks?: string,
 ): Promise<boolean> {
   const to = (email || "").trim();
   if (!to) return false;
 
   const surveyUrl =
     "https://forms.office.com/Pages/ResponsePage.aspx?id=gKvjQCQgo0W_dnoHYaJNKfX6mizlSOtEuBUUaobYm6pUM1hLWk9HU01EQzQ4MFQxTkxaNVYxSjdGSy4u&fbclid=IwY2xjawQuj8ZleHRuA2FlbQIxMQBzcnRjBmFwcF9pZAEwAAEe_BtbxRkZWDu6m7lyEBqJFigZAQZIALRhXTB8eVLTcf62UPT63EhrjYDT4zE_aem_JKSqla9L3RAz5d1NmMao_A";
+
+  const remarksSection = adminRemarks ? `
+    <div style="background-color: #f0f9ff; border-left: 4px solid #1d4ed8; padding: 16px; margin: 20px 0; border-radius: 4px;">
+      <p style="margin-top: 0; font-weight: bold; color: #1d4ed8;">Admin's Remarks:</p>
+      <p style="margin: 8px 0; white-space: pre-wrap; color: #374151;">${adminRemarks}</p>
+    </div>
+  ` : '';
 
   const htmlContent = `
     <html>
@@ -277,6 +285,7 @@ export async function sendFinishedSurveyEmail(
           Thank you for using our IT Service Request System.
           Your request <strong>#${requestId} - ${requestTitle}</strong> has been marked as <strong>Finished</strong>.
         </p>
+        ${remarksSection}
         <p>
           To help us improve the quality of our service, may we kindly ask you to answer our client satisfaction survey:
         </p>
