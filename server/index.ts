@@ -114,12 +114,17 @@ app.use((req, res, next) => {
   }
 
   // schedule periodic administrative SMS digests (11 AM & 3 PM local time)
-  try {
-    const { startAdminSchedulers } = await import('./adminNotifier');
-    startAdminSchedulers();
-    console.log('[ADMIN SMS] schedulers initialized');
-  } catch (e) {
-    console.error('[ADMIN SMS] could not start schedulers', e);
+  // DISABLED by default - set ENABLE_ADMIN_SCHEDULER=true to activate
+  if (process.env.ENABLE_ADMIN_SCHEDULER === 'true') {
+    try {
+      const { startAdminSchedulers } = await import('./adminNotifier');
+      startAdminSchedulers();
+      console.log('[ADMIN SMS] schedulers initialized');
+    } catch (e) {
+      console.error('[ADMIN SMS] could not start schedulers', e);
+    }
+  } else {
+    console.log('[ADMIN SMS] schedulers disabled (set ENABLE_ADMIN_SCHEDULER=true to enable)');
   }
 
   // ALWAYS serve the app on the port specified in the environment variable PORT

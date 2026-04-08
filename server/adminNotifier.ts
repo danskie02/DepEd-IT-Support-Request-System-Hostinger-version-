@@ -1,6 +1,10 @@
 import { storage } from "./storage";
 import { sendSms } from "./sms";
 
+/** Track last time admin summary was sent to prevent spam */
+let lastAdminSummarySentTime: number = 0;
+const ADMIN_SUMMARY_MIN_INTERVAL_MS = 60 * 60 * 1000; // Minimum 1 hour between summaries
+
 /** GSM-friendly labels — Unicode emojis often appear as "@@@@" or "?" on SIM800-class modules. */
 function priorityTag(priority: string): string {
   switch (priority) {
@@ -35,6 +39,10 @@ async function sendToAdmins(message: string) {
   try {
     const users = await storage.getAllUsers();
     const admins = users.filter((u) => u.role === "admin");
+    
+    // Log admin notification attempt
+    console.log(`[ADMIN SMS] Sending to ${admins.length} admin(s): ${message.substring(0, 50)}...`);
+    
     for (const admin of admins) {
       if (admin.phone) {
         await sendSms(admin.phone, message, { kind: "other" });
@@ -66,12 +74,23 @@ export async function notifyAdminsOfNewRequest(
 
 /**
  * Send an SMS summary of all pending requests, including age with alerts near 48h.
+ * Rate-limited to prevent spam (minimum 1 hour between sends).
  */
 export async function sendAdminSummary() {
+  const now = Date.now();
+  
+  // Rate limit: don't send more than once per hour
+  if (now - lastAdminSummarySentTime < ADMIN_SUMMARY_MIN_INTERVAL_MS) {
+    const minsSinceLastSend = Math.floor((now - lastAdminSummarySentTime) / 1000 / 60);
+    console.log(`[ADMIN SMS] Skipping summary - last sent ${minsSinceLastSend} min ago (rate limit: 1/hour)`);
+    return;
+  }
+
   try {
     const all = await storage.getRequests();
     const pending = all.filter((r) => r.status === "pending");
     if (pending.length === 0) {
+      console.log('[ADMIN SMS] No pending requests - skipping summary');
       return;
     }
 
@@ -102,6 +121,8 @@ export async function sendAdminSummary() {
     }
 
     await sendToAdmins(msg);
+    lastAdminSummarySentTime = now.getTime();
+    console.log('[ADMIN SMS] Summary sent successfully');
   } catch (err) {
     console.error("[ADMIN SMS] failed to send summary", err);
   }
