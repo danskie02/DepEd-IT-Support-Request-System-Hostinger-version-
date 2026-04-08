@@ -1,7 +1,31 @@
 import { db } from "./db";
 import { smsJobs } from "@shared/schema";
 import { sendSms } from "./sms";
-import { eq, and, or, lt } from "drizzle-orm";
+import { eq, and, or, lt, inArray } from "drizzle-orm";
+
+// Clean up old SMS jobs that have been in the queue for 24+ hours
+async function cleanupOldJobs() {
+  try {
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    // Delete pending/sending jobs older than 24 hours
+    const deleted = await db
+      .delete(smsJobs)
+      .where(
+        and(
+          lt(smsJobs.updatedAt, twentyFourHoursAgo),
+          inArray(smsJobs.status, ["pending", "sending"])
+        )
+      )
+      .returning({ id: smsJobs.id });
+
+    if (deleted.length > 0) {
+      console.log(`[SMS WORKER] Cleaned up ${deleted.length} stale job(s) from queue (24+ hours old)`);
+    }
+  } catch (err) {
+    console.error("[SMS WORKER] Error cleaning up stale jobs:", err);
+  }
+}
 
 // process all pending SMS jobs in the database
 async function processPendingJobs() {
@@ -59,6 +83,10 @@ export async function startSmsWorker(pollInterval = 5000) {
   console.log("[SMS WORKER] started");
   while (true) {
     try {
+      // Clean up old jobs first (24+ hour TTL)
+      await cleanupOldJobs();
+      
+      // Then process pending jobs
       await processPendingJobs();
     } catch (e) {
       console.error("[SMS WORKER] unexpected error", e);

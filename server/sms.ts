@@ -74,6 +74,31 @@ async function queueSmsJob(toPhone: string, message: string, meta: SmsMeta): Pro
   try {
     const { db } = await import("./db");
     const { smsJobs } = await import("@shared/schema");
+    const { eq, and, gte } = await import("drizzle-orm");
+
+    // Check for duplicate: same phone, message, and kind within the last 5 minutes
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+    const existingJobs = await db
+      .select()
+      .from(smsJobs)
+      .where(
+        and(
+          eq(smsJobs.to, toPhone),
+          eq(smsJobs.message, message),
+          eq(smsJobs.kind, meta.kind || "other"),
+          gte(smsJobs.updatedAt, fiveMinutesAgo)
+        )
+      )
+      .limit(1);
+
+    if (existingJobs && existingJobs.length > 0) {
+      const job = existingJobs[0];
+      // Skip if the previous job is still pending or sending
+      if (job.status === "pending" || job.status === "sending") {
+        console.log(`[SMS][QUEUE] Duplicate detected for ${maskPhone(toPhone)} - skipping (${meta.kind || "other"})`);
+        return { success: true, message: "SMS already queued (duplicate)" };
+      }
+    }
 
     await db.insert(smsJobs).values({
       to: toPhone,

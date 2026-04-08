@@ -35,7 +35,8 @@ const personalInfoSchema = z.object({
   name: z.string().min(2, "Name is required"),
   phone: z.string().min(10, "Valid phone number required"),
   email: z.string().email("Valid email required"),
-  office: z.string().min(1, "Office is required"),
+  locationType: z.literal("sdo").or(z.literal("school")),
+  office: z.string().min(1, "Office or School name is required"),
 });
 
 type PersonalInfo = z.infer<typeof personalInfoSchema>;
@@ -51,6 +52,7 @@ export default function NewRequestPage() {
   const [savePersonalInfo, setSavePersonalInfo] = useState(true);
   const [isCheckingUser, setIsCheckingUser] = useState(true);
   const [pendingRequest, setPendingRequest] = useState<RequestFormValues | null>(null);
+  const [requestLocationType, setRequestLocationType] = useState<"sdo" | "school">("sdo");
 
   const personalForm = useForm({
     resolver: zodResolver(personalInfoSchema),
@@ -58,6 +60,7 @@ export default function NewRequestPage() {
       name: "",
       phone: "",
       email: "",
+      locationType: "sdo",
       office: "HR",
     },
   });
@@ -77,6 +80,9 @@ export default function NewRequestPage() {
     const office = personalInfo?.office;
     if (office) {
       requestForm.setValue("office", office);
+      // Set locationType based on whether office is in OFFICE_OPTIONS
+      const isSDO = OFFICE_OPTIONS.includes(office as any);
+      setRequestLocationType(isSDO ? "sdo" : "school");
     }
   }, [personalInfo, requestForm]);
 
@@ -93,6 +99,7 @@ export default function NewRequestPage() {
           name: user.name,
           phone: user.phone,
           email: user.email,
+          locationType: "sdo",
           office: "HR",
         });
         setStep("request-details");
@@ -158,7 +165,8 @@ export default function NewRequestPage() {
     setStep("personal-info");
   };
 
-  const handlePersonalInfoSubmit = async (values: PersonalInfo) => {
+  const handlePersonalInfoSubmit = async (values: any) => {
+    const typedValues = values as PersonalInfo;
     if (!pendingRequest) {
       setStep("request-details");
       return;
@@ -168,7 +176,7 @@ export default function NewRequestPage() {
       const response = await fetch("/api/auth/check-user", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: values.email, phone: values.phone }),
+        body: JSON.stringify({ email: typedValues.email, phone: typedValues.phone }),
       });
       if (response.ok) {
         await response.json();
@@ -178,8 +186,8 @@ export default function NewRequestPage() {
       // ignore
     }
 
-    setPersonalInfo(values);
-    submitPayload(pendingRequest, values);
+    setPersonalInfo(typedValues);
+    submitPayload(pendingRequest, typedValues);
   };
 
   const handleBackFromPersonal = () => {
@@ -282,12 +290,12 @@ export default function NewRequestPage() {
           <CardHeader className="border-b border-[hsl(var(--border))] bg-muted/30 rounded-t-lg">
             <CardTitle className="text-primary">Your Information</CardTitle>
             <CardDescription>
-              To submit your request, we need your name, contact number, email, and office or unit (per division policy).
+              To submit your request, we need your name, contact number, email, and whether you're from the SDO or a school.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Form {...personalForm}>
-              <form onSubmit={personalForm.handleSubmit(handlePersonalInfoSubmit)} className="space-y-6">
+              <form onSubmit={personalForm.handleSubmit(handlePersonalInfoSubmit) as any} className="space-y-6">
                 <FormField
                   control={personalForm.control}
                   name="name"
@@ -333,31 +341,93 @@ export default function NewRequestPage() {
 
                 <FormField
                   control={personalForm.control}
-                  name="office"
+                  name="locationType"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Office / Unit</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select office or unit" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {OFFICE_OPTIONS.map((office) => (
-                            <SelectItem key={office} value={office} className="bg-[hsl(205_90%_97%)] focus:bg-primary/15 focus:text-primary-foreground data-[highlight]:bg-primary/20">
-                              <span className="flex items-center gap-2">
-                                <span className="w-2 h-2 rounded-full bg-primary shrink-0" />
-                                {office}
-                              </span>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <FormLabel>Request From</FormLabel>
+                      <div className="flex gap-4 mt-2">
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="radio"
+                            id="sdo"
+                            value="sdo"
+                            checked={field.value === "sdo"}
+                            onChange={(e) => {
+                              field.onChange(e.target.value);
+                              personalForm.setValue("office", "HR");
+                            }}
+                            className="w-4 h-4 cursor-pointer"
+                          />
+                          <label htmlFor="sdo" className="text-sm cursor-pointer font-medium">
+                            SDO (Schools Division Office)
+                          </label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="radio"
+                            id="school"
+                            value="school"
+                            checked={field.value === "school"}
+                            onChange={(e) => {
+                              field.onChange(e.target.value);
+                              personalForm.setValue("office", "");
+                            }}
+                            className="w-4 h-4 cursor-pointer"
+                          />
+                          <label htmlFor="school" className="text-sm cursor-pointer font-medium">
+                            School
+                          </label>
+                        </div>
+                      </div>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+
+                {personalForm.watch("locationType") === "sdo" ? (
+                  <FormField
+                    control={personalForm.control}
+                    name="office"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Office / Unit</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select office or unit" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {OFFICE_OPTIONS.map((office) => (
+                              <SelectItem key={office} value={office} className="bg-[hsl(205_90%_97%)] focus:bg-primary/15 focus:text-primary-foreground data-[highlight]:bg-primary/20">
+                                <span className="flex items-center gap-2">
+                                  <span className="w-2 h-2 rounded-full bg-primary shrink-0" />
+                                  {office}
+                                </span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                ) : (
+                  <FormField
+                    control={personalForm.control}
+                    name="office"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>School Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g., San Roque Elementary School" {...field} />
+                        </FormControl>
+                        <FormDescription>Enter the name of your school.</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
 
                 <div className="flex items-start space-x-3 rounded-lg border border-primary/20 bg-primary/5 p-4">
                   <Checkbox
@@ -419,34 +489,90 @@ export default function NewRequestPage() {
                   )}
                 />
 
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Request From</label>
+                    <div className="flex gap-4">
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="radio"
+                          id="req-sdo"
+                          value="sdo"
+                          checked={requestLocationType === "sdo"}
+                          onChange={(e) => {
+                            setRequestLocationType(e.target.value as "sdo" | "school");
+                            requestForm.setValue("office", "HR");
+                          }}
+                          className="w-4 h-4 cursor-pointer"
+                        />
+                        <label htmlFor="req-sdo" className="text-sm cursor-pointer font-medium">
+                          SDO (Schools Division Office)
+                        </label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="radio"
+                          id="req-school"
+                          value="school"
+                          checked={requestLocationType === "school"}
+                          onChange={(e) => {
+                            setRequestLocationType(e.target.value as "sdo" | "school");
+                            requestForm.setValue("office", "");
+                          }}
+                          className="w-4 h-4 cursor-pointer"
+                        />
+                        <label htmlFor="req-school" className="text-sm cursor-pointer font-medium">
+                          School
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-                  <FormField
-                    control={requestForm.control}
-                    name="office"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Office / Unit</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                  {requestLocationType === "sdo" ? (
+                    <FormField
+                      control={requestForm.control}
+                      name="office"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Office / Unit</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select office" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {OFFICE_OPTIONS.map((office) => (
+                                <SelectItem key={office} value={office} className="bg-[hsl(205_90%_97%)] focus:bg-primary/15 focus:text-primary-foreground data-[highlight]:bg-primary/20">
+                                  <span className="flex items-center gap-2">
+                                    <span className="w-2 h-2 rounded-full bg-primary shrink-0" />
+                                    {office}
+                                  </span>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  ) : (
+                    <FormField
+                      control={requestForm.control}
+                      name="office"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>School Name</FormLabel>
                           <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select office" />
-                            </SelectTrigger>
+                            <Input placeholder="e.g., San Roque Elementary School" {...field} />
                           </FormControl>
-                          <SelectContent>
-                            {OFFICE_OPTIONS.map((office) => (
-                              <SelectItem key={office} value={office} className="bg-[hsl(205_90%_97%)] focus:bg-primary/15 focus:text-primary-foreground data-[highlight]:bg-primary/20">
-                                <span className="flex items-center gap-2">
-                                  <span className="w-2 h-2 rounded-full bg-primary shrink-0" />
-                                  {office}
-                                </span>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
 
                   <FormField
                     control={requestForm.control}
