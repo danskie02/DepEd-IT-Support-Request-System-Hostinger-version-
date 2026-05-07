@@ -168,6 +168,17 @@ export const api = {
         404: errorSchemas.notFound,
       },
     },
+    delete: {
+      method: 'DELETE' as const,
+      path: '/api/admin/requests/:id',
+      responses: {
+        200: z.object({ message: z.string() }),
+        400: errorSchemas.validation,
+        401: errorSchemas.unauthorized,
+        403: z.object({ message: z.string() }),
+        404: errorSchemas.notFound,
+      },
+    },
   },
   users: {
     list: {

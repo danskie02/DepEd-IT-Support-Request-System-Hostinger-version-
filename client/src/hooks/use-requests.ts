@@ -92,3 +92,38 @@ export function useUpdateRequestStatus() {
     },
   });
 }
+
+export function useDeleteFinishedRequest() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const url = buildUrl(api.requests.delete.path, { id });
+      const res = await fetch(url, {
+        method: api.requests.delete.method,
+        credentials: "include",
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const msg = typeof body?.message === "string" ? body.message : "Failed to delete request";
+        throw new Error(msg);
+      }
+      return api.requests.delete.responses[200].parse(body);
+    },
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: [api.requests.list.path] });
+      toast({
+        title: "Request deleted",
+        description: `Request #${id} was permanently removed.`,
+      });
+    },
+    onError: (error: unknown) => {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to delete request",
+        variant: "destructive",
+      });
+    },
+  });
+}

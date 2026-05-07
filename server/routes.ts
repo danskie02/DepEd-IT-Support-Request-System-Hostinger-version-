@@ -462,6 +462,32 @@ export async function registerRoutes(
     }
   });
 
+  app.delete(api.requests.delete.path, async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send();
+
+    // @ts-ignore
+    if (req.user.role !== 'admin') return res.status(403).json({ message: "Admin only" });
+
+    const id = Number(req.params.id);
+    if (Number.isNaN(id)) {
+      return res.status(400).json({ message: "Invalid request id" });
+    }
+
+    const outcome = await storage.deleteFinishedRequest(id);
+    if (outcome.reason === "not_found") {
+      return res.status(404).json({ message: "Not found" });
+    }
+    if (outcome.reason === "not_finished") {
+      return res.status(400).json({
+        message:
+          "Only finished requests can be deleted. Mark the request Finished first, then remove it from archives.",
+      });
+    }
+
+    console.log(`[REQUEST DELETED] #${id} by admin`);
+    res.json({ message: `Request #${id} deleted permanently.` });
+  });
+
   // DISABLED: Telegram Bot Webhook - Telegram service is temporarily suspended
   // app.post('/api/telegram/webhook', async (req, res) => {
   //   try {

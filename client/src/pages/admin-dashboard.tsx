@@ -1,17 +1,25 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { useRequests, useUpdateRequestStatus } from "@/hooks/use-requests";
+import { useRequests, useUpdateRequestStatus, useDeleteFinishedRequest } from "@/hooks/use-requests";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { StatusBadge, PriorityBadge } from "@/components/status-badge";
 import { formatLocalDate } from "@/lib/date-utils";
-import { Search, Filter, Eye, CheckCircle, Loader2, Settings, Users, AlertTriangle } from "lucide-react";
+import { Search, Filter, Eye, CheckCircle, Loader2, Settings, Users, AlertTriangle, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // Helper function to sort by priority
 function getPriorityOrder(priority: string): number {
@@ -34,12 +42,14 @@ export default function AdminDashboard() {
   const [, navigate] = useLocation();
   const { data: requests, isLoading } = useRequests(true); // Enable auto-refresh for admin
   const { mutate: updateStatus, isPending: isUpdating } = useUpdateRequestStatus();
+  const { mutate: deleteFinishedRequest, isPending: isDeleting } = useDeleteFinishedRequest();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("pending");
   const [selectedRequest, setSelectedRequest] = useState<any>(null);
   const [adminResponse, setAdminResponse] = useState("");
   const [reviewAction, setReviewAction] = useState<"on_going" | "finished" | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -234,7 +244,17 @@ export default function AdminDashboard() {
       </div>
 
       {/* Review Dialog */}
-      <Dialog open={!!selectedRequest} onOpenChange={(open) => !open && setSelectedRequest(null)}>
+      <Dialog
+        open={!!selectedRequest}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedRequest(null);
+            setDeleteConfirmOpen(false);
+            setReviewAction(null);
+            setAdminResponse("");
+          }
+        }}
+      >
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold flex items-center gap-3">
@@ -325,10 +345,28 @@ export default function AdminDashboard() {
                     )}
                   </>
                 ) : (
-                  <div className="bg-gray-100 p-4 rounded text-center">
+                  <div className="bg-gray-100 p-4 rounded text-center space-y-4">
                     <p className="text-muted-foreground">This request has already been processed.</p>
-                    <div className="mt-2 flex justify-center">
+                    <div className="flex justify-center">
                       <StatusBadge status={selectedRequest.status} />
+                    </div>
+                    <div className="pt-3 border-t border-gray-200 text-left space-y-2">
+                      <p className="text-xs text-muted-foreground text-center">
+                        Permanently remove this finished record to free database space. SMS jobs linked to this request are cleared too.
+                        This cannot be undone.
+                      </p>
+                      <div className="flex justify-center">
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          className="gap-2"
+                          onClick={() => setDeleteConfirmOpen(true)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          Delete from database
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -337,6 +375,43 @@ export default function AdminDashboard() {
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Delete request{selectedRequest ? ` #${selectedRequest.id}` : ""}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the row from the <strong>requests</strong> table. Only requests with status{" "}
+              <strong>Finished</strong> can be deleted. Related rows in the SMS queue for this request are removed first so
+              the database stays consistent.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={isDeleting || !selectedRequest}
+              onClick={() => {
+                if (!selectedRequest) return;
+                deleteFinishedRequest(selectedRequest.id, {
+                  onSuccess: () => {
+                    setDeleteConfirmOpen(false);
+                    setSelectedRequest(null);
+                    setReviewAction(null);
+                    setAdminResponse("");
+                  },
+                });
+              }}
+            >
+              {isDeleting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              Delete permanently
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

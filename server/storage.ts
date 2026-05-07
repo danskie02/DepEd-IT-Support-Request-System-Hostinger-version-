@@ -1,10 +1,15 @@
 
 import { db } from "./db";
 import {
-  users, requests, otps,
-  type User, type InsertUser,
-  type Request, type InsertRequest,
-  type InsertRequest as CreateRequestPayload
+  users,
+  requests,
+  otps,
+  smsJobs,
+  type User,
+  type InsertUser,
+  type Request,
+  type InsertRequest,
+  type InsertRequest as CreateRequestPayload,
 } from "@shared/schema";
 import { eq, desc } from "drizzle-orm";
 
@@ -34,6 +39,8 @@ export interface IStorage {
   getRequest(id: number): Promise<Request | undefined>;
   createRequest(userId: number, request: CreateRequestPayload): Promise<Request>;
   updateRequestStatus(id: number, status: "on_going" | "finished", response?: string): Promise<Request | undefined>;
+  /** Permanently remove a finished request (and related SMS queue rows). */
+  deleteFinishedRequest(id: number): Promise<{ deleted: boolean; reason?: "not_found" | "not_finished" }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -164,6 +171,16 @@ export class DatabaseStorage implements IStorage {
       .where(eq(requests.id, id))
       .returning();
     return updated;
+  }
+
+  async deleteFinishedRequest(id: number): Promise<{ deleted: boolean; reason?: "not_found" | "not_finished" }> {
+    const row = await this.getRequest(id);
+    if (!row) return { deleted: false, reason: "not_found" };
+    if (row.status !== "finished") return { deleted: false, reason: "not_finished" };
+
+    await db.delete(smsJobs).where(eq(smsJobs.requestId, id));
+    await db.delete(requests).where(eq(requests.id, id));
+    return { deleted: true };
   }
 }
 
